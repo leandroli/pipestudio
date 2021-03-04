@@ -1,0 +1,24 @@
+# permissions for end users to edit taskruns.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: taskrun-editor-role
+rules:
+- apiGroups:
+  - pipestudio.github.com
+  resources:
+  - taskruns
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - pipestudio.github.com
+  resources:
+  - taskruns/status
+  verbs:
+  - get

@@ -1,0 +1,34 @@
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: manager-role
+rules:
+- apiGroups:
+  - pipestudio.github.com
+  resources:
+  - taskruns
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - pipestudio.github.com
+  resources:
+  - taskruns/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - pipestudio.github.com
+  resources:
+  - taskruns/status
+  verbs:
+  - get
+  - patch
+  - update
