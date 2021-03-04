@@ -4,4 +4,10 @@ metadata:
   name: task-sample
 spec:
   # Add fields here
-  foo: bar
+  steps: 
+  - name: hello-world
+    image: ubuntu
+    command:
+        - /bin/bash
+    args:
+        - "echo hello world"

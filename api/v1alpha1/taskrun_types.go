@@ -17,20 +17,20 @@ limitations under the License.
 package v1alpha1
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
 // TaskRunSpec defines the desired state of TaskRun
 type TaskRunSpec struct {
-	TaskRef *TaskRef `json:"taskRef,omitempty"`
+	TaskRef *TaskRef    `json:"taskRef,omitempty"`
 	Trigger TaskTrigger `json:"trigger,omitempty"`
 }
 
 // TaskRef can be used to refer to a specific instance of a task.
-type TaskRef struct{
+type TaskRef struct {
 	Name string `json:"name"`
 }
 
@@ -100,7 +100,7 @@ func (tr *TaskRun) GetBuildPodRef() corev1.ObjectReference {
 func (tr *TaskRun) GetBuildPodMeta() metav1.ObjectMeta {
 	return metav1.ObjectMeta{
 		GenerateName: tr.Name,
-		Namespace: tr.Namespace,
+		Namespace:    tr.Namespace,
 	}
 }
 

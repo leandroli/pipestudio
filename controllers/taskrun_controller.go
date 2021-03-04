@@ -64,8 +64,8 @@ func (r *TaskRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
-            // Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-            // Return and don't requeue
+			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
+			// Return and don't requeue
 			return ctrl.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
@@ -102,11 +102,11 @@ func (r *TaskRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 		return ctrl.Result{}, err
 	}
-	
+
 	// update status if necessary
 	status := pipestudiov1alpha1.TaskRunStatus{
 		PodName: pod.Name,
-		Steps: pod.Status.ContainerStatuses,
+		Steps:   pod.Status.ContainerStatuses,
 	}
 	if !reflect.DeepEqual(status, taskRun.Status) {
 		taskRun.Status = status
