@@ -1,0 +1,4 @@
+## Append samples you want in your CSV to this file as resources ##
+resources:
+- pipestudio_v1alpha1_task.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples
