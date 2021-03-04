@@ -39,7 +39,8 @@ spec:
               steps:
                 description: Steps are the steps of the build
                 items:
-                  description: Step are the step of Task
+                  description: A single application container that you want to run
+                    within a pod.
                   properties:
                     args:
                       description: 'Arguments to the entrypoint. The docker image''s

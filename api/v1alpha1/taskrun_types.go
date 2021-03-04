@@ -59,7 +59,7 @@ type TaskTrigger struct {
 // TaskRunStatus defines the observed state of TaskRun
 type TaskRunStatus struct {
 	// Steps describes the state of each build step container.
-	Steps []corev1.ContainerState `json:"steps,omitempty"`
+	Steps []corev1.ContainerStatus `json:"steps,omitempty"`
 
 	// PodName is the name of the pod responsible for executing this task's steps.
 	PodName string `json:"podName"`
@@ -93,6 +93,14 @@ func (tr *TaskRun) GetBuildPodRef() corev1.ObjectReference {
 		Kind:       "Pod",
 		Namespace:  tr.Namespace,
 		Name:       tr.Name,
+	}
+}
+
+// GetBuildPodMeta for task to get meta info to build a pod
+func (tr *TaskRun) GetBuildPodMeta() metav1.ObjectMeta {
+	return metav1.ObjectMeta{
+		GenerateName: tr.Name,
+		Namespace: tr.Namespace,
 	}
 }
 

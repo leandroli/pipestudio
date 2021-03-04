@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"reflect"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -25,6 +26,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	pipestudiov1alpha1 "github.com/leandroli/pipestudio/api/v1alpha1"
+
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 )
 
 // TaskRunReconciler reconciles a TaskRun object
@@ -54,12 +58,81 @@ func (r *TaskRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	// your logic here
 
+	// retireve a TaskRun instance
+	instance := &pipestudiov1alpha1.TaskRun{}
+	err := r.Get(ctx, req.NamespacedName, instance)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// Request object not found, could have been deleted after reconcile request.
+            // Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
+            // Return and don't requeue
+			return ctrl.Result{}, nil
+		}
+		// Error reading the object - requeue the request.
+		return ctrl.Result{}, err
+	}
+
+	// retireve the task that the taskRun refers to
+	taskRun := instance
+	task := &pipestudiov1alpha1.Task{}
+	if err = r.Get(ctx, client.ObjectKey{Namespace: taskRun.Namespace, Name: taskRun.Spec.TaskRef.Name}, task); err != nil {
+		if errors.IsNotFound(err) {
+			// TODO(处理有TaskRun但没有Task的情况, deal with the scenario that Task that TaskRun refers to dose not exist)
+			return ctrl.Result{}, nil
+		}
+		return ctrl.Result{}, err
+	}
+
+	// retireve the pod
+	pod := &corev1.Pod{}
+	if err = r.Get(ctx, client.ObjectKey{Namespace: taskRun.Namespace, Name: taskRun.Name}, pod); err != nil {
+		if errors.IsNotFound(err) {
+			r.Log.Info("Creating a pod for TaskRun", "taskRun.name", taskRun.Name)
+			newPod := newPodForTaskRun(taskRun, task)
+			if err := ctrl.SetControllerReference(taskRun, newPod, r.Scheme); err != nil {
+				return ctrl.Result{}, err
+			}
+			err = r.Create(ctx, newPod)
+			if err != nil {
+				r.Log.Error(err, "Failed to create pod", "pod.name", newPod.Name)
+				return ctrl.Result{}, err
+			}
+			r.Log.Info("A pod has been created for TaskRun", "taskRun.name", taskRun.Name)
+			return ctrl.Result{Requeue: true}, nil
+		}
+		return ctrl.Result{}, err
+	}
+	
+	// update status if necessary
+	status := pipestudiov1alpha1.TaskRunStatus{
+		PodName: pod.Name,
+		Steps: pod.Status.ContainerStatuses,
+	}
+	if !reflect.DeepEqual(status, taskRun.Status) {
+		taskRun.Status = status
+		err := r.Status().Update(ctx, taskRun)
+		if err != nil {
+			r.Log.Error(err, "Failed to update TaskRun status")
+			return ctrl.Result{}, err
+		}
+	}
+
 	return ctrl.Result{}, nil
+}
+
+func newPodForTaskRun(tr *pipestudiov1alpha1.TaskRun, t *pipestudiov1alpha1.Task) *corev1.Pod {
+	return &corev1.Pod{
+		ObjectMeta: tr.GetBuildPodMeta(),
+		Spec: corev1.PodSpec{
+			Containers: t.Spec.Steps,
+		},
+	}
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *TaskRunReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&pipestudiov1alpha1.TaskRun{}).
+		Owns(&corev1.Pod{}).
 		Complete(r)
 }

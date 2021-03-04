@@ -24,13 +24,10 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// Step are the step of Task
-type Step corev1.Container
-
 // TaskSpec defines the desired state of Task
 type TaskSpec struct {
 	// Steps are the steps of the build
-	Steps []Step `json:"steps,omitempty"`
+	Steps []corev1.Container `json:"steps,omitempty"`
 
 	// Volumes is a collection of volumes that are available to mount into the
 	// steps of the build.
