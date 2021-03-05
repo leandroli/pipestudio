@@ -124,25 +124,21 @@ func (r *TaskRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 func newPodForTaskRun(tr *pipestudiov1alpha1.TaskRun, t *pipestudiov1alpha1.Task) *corev1.Pod {
 	containers := t.Spec.Steps
 	for i := 0; i < len(containers); i++ {
-		containers[i].VolumeMounts = []corev1.VolumeMount{
-			{
-				Name:      "workspace",
-				MountPath: "/workspace",
-			},
-		}
+		containers[i].VolumeMounts = append(containers[i].VolumeMounts, corev1.VolumeMount{
+			Name: "workspace",
+			MountPath: "/workspace",
+		})
 	}
 	return &corev1.Pod{
 		ObjectMeta: tr.GetBuildPodMeta(),
 		Spec: corev1.PodSpec{
 			Containers: containers,
-			Volumes: []corev1.Volume{
-				{
-					Name: "workspace",
-					VolumeSource: corev1.VolumeSource{
-						EmptyDir: &corev1.EmptyDirVolumeSource{},
-					},
+			Volumes: append(t.Spec.Volumes, corev1.Volume{
+				Name: "workspace",
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
 				},
-			},
+			}),
 		},
 	}
 }

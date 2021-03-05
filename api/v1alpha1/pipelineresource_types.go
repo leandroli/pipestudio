@@ -19,23 +19,31 @@ package v1alpha1
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+// PipelineResourceType represents the type of endpoint the pipelineResource is, now there is
+// only one type git
+type PipelineResourceType string
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
+const (
+	// PipelineResourceTypeGit indicates that this source is a GitHub repo.
+	PipelineResourceTypeGit PipelineResourceType = "git"
+)
+
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+
+// Param declares a value to use for the Param called Name.
+type Param struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
 
 // PipelineResourceSpec defines the desired state of PipelineResource
 type PipelineResourceSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of PipelineResource. Edit PipelineResource_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	Type   PipelineResourceType `json:"type"`
+	Params []Param              `json:"params"`
 }
 
 // PipelineResourceStatus defines the observed state of PipelineResource
 type PipelineResourceStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
 }
 
 // +kubebuilder:object:root=true

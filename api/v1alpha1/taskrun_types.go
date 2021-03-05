@@ -25,6 +25,8 @@ import (
 
 // TaskRunSpec defines the desired state of TaskRun
 type TaskRunSpec struct {
+	Inputs *Inputs `json:"inputs,omitempty"`
+	Outputs *Outputs `json:"outputs,omitempty"`
 	TaskRef *TaskRef    `json:"taskRef,omitempty"`
 	Trigger TaskTrigger `json:"trigger,omitempty"`
 }
@@ -52,8 +54,39 @@ const (
 // to the corresponding PipelineRun.
 type TaskTrigger struct {
 	Type TaskTriggerType `json:"type"`
-	// +optional
 	Name string `json:"name,omitempty"`
+}
+
+// TaskResource defines an input or output Resource declared as a requirement
+// by a Task. The Name field will be used to refer to these Resources within
+// the Task definition, and when provided as an Input, the Name will be the
+// path to the volume mounted containing this Resource as an input (e.g.
+// an input Resource named `workspace` will be mounted at `/workspace`).
+type TaskResource struct {
+	Name string               `json:"name"`
+	Type PipelineResourceType `json:"type"`
+	// TargetPath is the path in workspace directory where the task resource will be copied.
+	TargetPath string `json:"targetPath"`
+}
+
+// TaskParam defines arbitrary parameters needed by a task beyond typed inputs
+// such as resources.
+type TaskParam struct {
+	Name string `json:"name"`
+	Description string `json:"description,omitempty"`
+	Default string `json:"default,omitempty"`
+}
+
+// Inputs are the requirements that a task needs to run a Build.
+type Inputs struct {
+	Resources []TaskResource `json:"resources,omitempty"`
+	Params []TaskParam `json:"params,omitempty"`
+}
+
+// Outputs allow a task to declare what data the Build/Task will be producing,
+// i.e. results such as logs and artifacts such as images.
+type Outputs struct {
+	Resources []TaskResource `json:"resources,omitempty"`
 }
 
 // TaskRunStatus defines the observed state of TaskRun
