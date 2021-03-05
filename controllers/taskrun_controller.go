@@ -77,7 +77,7 @@ func (r *TaskRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	task := &pipestudiov1alpha1.Task{}
 	if err = r.Get(ctx, client.ObjectKey{Namespace: taskRun.Namespace, Name: taskRun.Spec.TaskRef.Name}, task); err != nil {
 		if errors.IsNotFound(err) {
-			// TODO(处理有TaskRun但没有Task的情况, deal with the scenario that Task that TaskRun refers to dose not exist)
+			// TODO(处理有TaskRun但没有Task的情况, deal with the scenario that Task to which TaskRun refers dose not exist)
 			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{}, err
@@ -85,7 +85,6 @@ func (r *TaskRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	// retireve the pod
 	pod := &corev1.Pod{}
-	// 这里改成r.List才能找到pod
 	if err = r.Get(ctx, client.ObjectKey{Namespace: taskRun.Namespace, Name: taskRun.Name}, pod); err != nil {
 		r.Log.Error(err, "Failed to find pod", "taskRun.name", taskRun.Name)
 		if errors.IsNotFound(err) {
@@ -123,10 +122,27 @@ func (r *TaskRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 }
 
 func newPodForTaskRun(tr *pipestudiov1alpha1.TaskRun, t *pipestudiov1alpha1.Task) *corev1.Pod {
+	containers := t.Spec.Steps
+	for i := 0; i < len(containers); i++ {
+		containers[i].VolumeMounts = []corev1.VolumeMount{
+			{
+				Name: "workspace",
+				MountPath: "/workspace",
+			},
+		}
+	}
 	return &corev1.Pod{
 		ObjectMeta: tr.GetBuildPodMeta(),
 		Spec: corev1.PodSpec{
-			Containers: t.Spec.Steps,
+			Containers: containers,
+			Volumes: []corev1.Volume{
+				{
+					Name: "workspace",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
+				},
+			},
 		},
 	}
 }
