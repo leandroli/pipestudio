@@ -27,6 +27,28 @@ import (
 type TaskRunSpec struct {
 	TaskRef *TaskRef    `json:"taskRef,omitempty"`
 	Trigger TaskTrigger `json:"trigger,omitempty"`
+	Inputs TaskRunInputs `json:"inputs,omitempty"`
+	Outputs TaskRunOutputs `json:"outputs,omitempty"`
+}
+
+// TaskRunInputs holds the input values that this task was invoked with.
+type TaskRunInputs struct {
+	Resources []TaskResourceBinding `json:"resources,omitempty"`
+	Params []Param `json:"params,omitempty"`
+}
+
+// TaskRunOutputs holds the output values that this task was invoked with.
+type TaskRunOutputs struct {
+	Resources []TaskResourceBinding `json:"resources,omitempty"`
+	Params []Param `json:"params,omitempty"`
+}
+
+// TaskResourceBinding points to the PipelineResource that
+// will be used for the Task input or output called Name.
+type TaskResourceBinding struct {
+	Name string `json:"name"`
+	// no more than one of the ResourceRef and ResourceSpec may be specified.
+	ResourceRef PipelineResourceRef `json:"resourceRef"`
 }
 
 // TaskRef can be used to refer to a specific instance of a task.

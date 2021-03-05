@@ -129,15 +129,30 @@ func newPodForTaskRun(tr *pipestudiov1alpha1.TaskRun, t *pipestudiov1alpha1.Task
 			MountPath: "/workspace",
 		})
 	}
+
+	volumeSourse := corev1.VolumeSource{
+		EmptyDir: &corev1.EmptyDirVolumeSource{},
+	}
+	for _, taskResource := range t.Spec.Inputs.Resources {
+		if taskResource.Type == pipestudiov1alpha1.PipelineResourceTypeGit {
+			// TODO(找到对应的TaskRun里的inputs中的pipelineResource，填入GitRepo的Repository中)
+			volumeSourse = corev1.VolumeSource{
+				GitRepo: &corev1.GitRepoVolumeSource{
+					
+					Directory: taskResource.TargetPath,
+				},
+			}
+			break
+		}
+	}
+
 	return &corev1.Pod{
 		ObjectMeta: tr.GetBuildPodMeta(),
 		Spec: corev1.PodSpec{
 			Containers: containers,
 			Volumes: append(t.Spec.Volumes, corev1.Volume{
 				Name: "workspace",
-				VolumeSource: corev1.VolumeSource{
-					EmptyDir: &corev1.EmptyDirVolumeSource{},
-				},
+				VolumeSource: volumeSourse,
 			}),
 		},
 	}
