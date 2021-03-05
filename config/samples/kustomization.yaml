@@ -2,4 +2,5 @@
 resources:
 - pipestudio_v1alpha1_task.yaml
 - pipestudio_v1alpha1_taskrun.yaml
+- pipestudio_v1alpha1_pipelineresource.yaml
 # +kubebuilder:scaffold:manifestskustomizesamples

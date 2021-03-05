@@ -11,6 +11,10 @@ resources:
   group: pipestudio
   kind: TaskRun
   version: v1alpha1
+- crdVersion: v1
+  group: pipestudio
+  kind: PipelineResource
+  version: v1alpha1
 version: 3-alpha
 plugins:
   manifests.sdk.operatorframework.io/v2: {}

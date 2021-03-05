@@ -126,7 +126,7 @@ func newPodForTaskRun(tr *pipestudiov1alpha1.TaskRun, t *pipestudiov1alpha1.Task
 	for i := 0; i < len(containers); i++ {
 		containers[i].VolumeMounts = []corev1.VolumeMount{
 			{
-				Name: "workspace",
+				Name:      "workspace",
 				MountPath: "/workspace",
 			},
 		}

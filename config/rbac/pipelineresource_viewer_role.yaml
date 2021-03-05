@@ -1,0 +1,20 @@
+# permissions for end users to view pipelineresources.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: pipelineresource-viewer-role
+rules:
+- apiGroups:
+  - pipestudio.github.com
+  resources:
+  - pipelineresources
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - pipestudio.github.com
+  resources:
+  - pipelineresources/status
+  verbs:
+  - get
