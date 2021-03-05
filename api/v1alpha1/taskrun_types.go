@@ -99,8 +99,8 @@ func (tr *TaskRun) GetBuildPodRef() corev1.ObjectReference {
 // GetBuildPodMeta for task to get meta info to build a pod
 func (tr *TaskRun) GetBuildPodMeta() metav1.ObjectMeta {
 	return metav1.ObjectMeta{
-		GenerateName: tr.Name,
-		Namespace:    tr.Namespace,
+		Name:      tr.Name,
+		Namespace: tr.Namespace,
 	}
 }
 

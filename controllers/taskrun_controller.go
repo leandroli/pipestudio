@@ -85,7 +85,9 @@ func (r *TaskRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	// retireve the pod
 	pod := &corev1.Pod{}
+	// 这里改成r.List才能找到pod
 	if err = r.Get(ctx, client.ObjectKey{Namespace: taskRun.Namespace, Name: taskRun.Name}, pod); err != nil {
+		r.Log.Error(err, "Failed to find pod", "taskRun.name", taskRun.Name)
 		if errors.IsNotFound(err) {
 			r.Log.Info("Creating a pod for TaskRun", "taskRun.name", taskRun.Name)
 			newPod := newPodForTaskRun(taskRun, task)

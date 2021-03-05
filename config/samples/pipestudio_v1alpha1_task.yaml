@@ -10,4 +10,4 @@ spec:
     command:
         - /bin/bash
     args:
-        - "echo hello world"
+        - "sleep 500"
