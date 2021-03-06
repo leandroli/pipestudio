@@ -1,8 +1,14 @@
 apiVersion: pipestudio.github.com/v1alpha1
 kind: TaskRun
 metadata:
-  name: taskrun-sample
+  name: read-repo-run
 spec:
-  # Add fields here
   taskRef:
-    name: task-sample
+    name: read-task
+  trigger:
+    type: manual
+  inputs:
+    resources:
+      - name: workspace
+        resourceRef:
+          name: go-example-git

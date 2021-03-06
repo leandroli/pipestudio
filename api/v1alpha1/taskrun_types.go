@@ -25,22 +25,22 @@ import (
 
 // TaskRunSpec defines the desired state of TaskRun
 type TaskRunSpec struct {
-	TaskRef *TaskRef    `json:"taskRef,omitempty"`
-	Trigger TaskTrigger `json:"trigger,omitempty"`
-	Inputs TaskRunInputs `json:"inputs,omitempty"`
+	TaskRef *TaskRef       `json:"taskRef,omitempty"`
+	Trigger TaskTrigger    `json:"trigger,omitempty"`
+	Inputs  TaskRunInputs  `json:"inputs,omitempty"`
 	Outputs TaskRunOutputs `json:"outputs,omitempty"`
 }
 
 // TaskRunInputs holds the input values that this task was invoked with.
 type TaskRunInputs struct {
 	Resources []TaskResourceBinding `json:"resources,omitempty"`
-	Params []Param `json:"params,omitempty"`
+	Params    []Param               `json:"params,omitempty"`
 }
 
 // TaskRunOutputs holds the output values that this task was invoked with.
 type TaskRunOutputs struct {
 	Resources []TaskResourceBinding `json:"resources,omitempty"`
-	Params []Param `json:"params,omitempty"`
+	Params    []Param               `json:"params,omitempty"`
 }
 
 // TaskResourceBinding points to the PipelineResource that
@@ -74,7 +74,7 @@ const (
 // to the corresponding PipelineRun.
 type TaskTrigger struct {
 	Type TaskTriggerType `json:"type"`
-	Name string `json:"name,omitempty"`
+	Name string          `json:"name,omitempty"`
 }
 
 // TaskRunStatus defines the observed state of TaskRun

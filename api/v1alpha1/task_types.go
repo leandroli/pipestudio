@@ -34,7 +34,7 @@ type TaskSpec struct {
 	Volumes []corev1.Volume `json:"volumes,omitempty"`
 
 	Inputs *Inputs `json:"inputs,omitempty"`
-	
+
 	Outputs *Outputs `json:"outputs,omitempty"`
 }
 
@@ -47,21 +47,21 @@ type TaskResource struct {
 	Name string               `json:"name"`
 	Type PipelineResourceType `json:"type"`
 	// TargetPath is the path in workspace directory where the task resource will be copied.
-	TargetPath string `json:"targetPath"`
+	TargetPath string `json:"targetPath,omitempty"`
 }
 
 // TaskParam defines arbitrary parameters needed by a task beyond typed inputs
 // such as resources.
 type TaskParam struct {
-	Name string `json:"name"`
+	Name        string `json:"name"`
 	Description string `json:"description,omitempty"`
-	Default string `json:"default,omitempty"`
+	Default     string `json:"default,omitempty"`
 }
 
 // Inputs are the requirements that a task needs to run a Build.
 type Inputs struct {
 	Resources []TaskResource `json:"resources,omitempty"`
-	Params []TaskParam `json:"params,omitempty"`
+	Params    []TaskParam    `json:"params,omitempty"`
 }
 
 // Outputs allow a task to declare what data the Build/Task will be producing,

@@ -1,13 +1,15 @@
 apiVersion: pipestudio.github.com/v1alpha1
 kind: Task
 metadata:
-  name: task-sample
+  name: read-task
 spec:
-  # Add fields here
-  steps: 
-  - name: hello-world
-    image: ubuntu
-    command:
-        - /bin/bash
-    args:
-        - "sleep 500"
+  inputs:
+    resources:
+      - name: workspace
+        type: git
+  steps:
+    - name: readme
+      image: ubuntu
+      command: ["/bin/bash"]
+      args: ["-c", "cat Dockerfile"]
+      workingDir: "/workspace/workspace"

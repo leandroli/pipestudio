@@ -1,7 +1,9 @@
 apiVersion: pipestudio.github.com/v1alpha1
 kind: PipelineResource
 metadata:
-  name: pipelineresource-sample
+  name: go-example-git
 spec:
-  # Add fields here
-  foo: bar
+  type: git
+  params:
+    - name: url
+      value: https://github.com/pivotal-nader-ziada/gohelloworld

@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
 // PipelineResourceType represents the type of endpoint the pipelineResource is, now there is
 // only one type git
 type PipelineResourceType string
@@ -47,7 +48,6 @@ type PipelineResourceRef struct {
 	// Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names
 	Name string `json:"name"`
 	// API version of the referent
-	// +optional
 	APIVersion string `json:"apiVersion,omitempty"`
 }
 

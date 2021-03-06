@@ -83,13 +83,27 @@ func (r *TaskRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
+	// retrieve the PipelineResources to which taskRun refers
+	inputPRIndexedByTaskResourceName := make(map[string]pipestudiov1alpha1.PipelineResource)
+	for _, resourceBinding := range taskRun.Spec.Inputs.Resources {
+		pr := &pipestudiov1alpha1.PipelineResource{}
+		if err = r.Get(ctx, client.ObjectKey{Namespace: taskRun.Namespace, Name: resourceBinding.ResourceRef.Name}, pr); err != nil {
+			if errors.IsNotFound(err) {
+				// TODO(处理TaskRun指向的资源不存在的情况)
+				return ctrl.Result{}, nil
+			}
+			return ctrl.Result{}, err
+		}
+		inputPRIndexedByTaskResourceName[resourceBinding.Name] = *pr
+	}
+
 	// retireve the pod
 	pod := &corev1.Pod{}
 	if err = r.Get(ctx, client.ObjectKey{Namespace: taskRun.Namespace, Name: taskRun.Name}, pod); err != nil {
 		r.Log.Error(err, "Failed to find pod", "taskRun.name", taskRun.Name)
 		if errors.IsNotFound(err) {
 			r.Log.Info("Creating a pod for TaskRun", "taskRun.name", taskRun.Name)
-			newPod := newPodForTaskRun(taskRun, task)
+			newPod := newPodForTaskRun(taskRun, task, inputPRIndexedByTaskResourceName)
 			if err := ctrl.SetControllerReference(taskRun, newPod, r.Scheme); err != nil {
 				return ctrl.Result{}, err
 			}
@@ -121,39 +135,87 @@ func (r *TaskRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	return ctrl.Result{}, nil
 }
 
-func newPodForTaskRun(tr *pipestudiov1alpha1.TaskRun, t *pipestudiov1alpha1.Task) *corev1.Pod {
-	containers := t.Spec.Steps
-	for i := 0; i < len(containers); i++ {
-		containers[i].VolumeMounts = append(containers[i].VolumeMounts, corev1.VolumeMount{
-			Name: "workspace",
-			MountPath: "/workspace",
-		})
+func getPathFromTR(tr pipestudiov1alpha1.TaskResource, trType string) string {
+	if trType == "input" {
+		if tr.TargetPath == "" {
+			return "/workspace/" + tr.Name
+		}
+		return "/workspace/" + tr.TargetPath
+	}
+	return "/workspace/output/" + tr.Name
+}
+
+// func for get url
+func getURLFromPR(pr pipestudiov1alpha1.PipelineResource) string {
+	for _, param := range pr.Spec.Params {
+		if param.Name == "url" {
+			return param.Value
+		}
+	}
+	return ""
+}
+func newPodForTaskRun(tr *pipestudiov1alpha1.TaskRun, t *pipestudiov1alpha1.Task, im map[string]pipestudiov1alpha1.PipelineResource) *corev1.Pod {
+
+	// add volumeMount into containers
+	// TODO(把gitRepo对应的东西也加在Container里)
+
+	volumeMounts := []corev1.VolumeMount{}
+	volumes := []corev1.Volume{}
+	taskResourceMap := make(map[string]bool)
+	// 把task的Inputs中的TaskResource作为volume绑在要创建的pod上。
+	if t.Spec.Inputs != nil {
+		for _, tr := range t.Spec.Inputs.Resources {
+			if tr.Type == pipestudiov1alpha1.PipelineResourceTypeGit {
+				volumes = append(volumes, corev1.Volume{
+					Name: tr.Name,
+					VolumeSource: corev1.VolumeSource{
+						GitRepo: &corev1.GitRepoVolumeSource{
+							Repository: getURLFromPR(im[tr.Name]),
+							Directory:  ".",
+						},
+					},
+				})
+				volumeMounts = append(volumeMounts, corev1.VolumeMount{
+					Name:      tr.Name,
+					MountPath: getPathFromTR(tr, "input"),
+				})
+			}
+			taskResourceMap[tr.Name] = true
+		}
 	}
 
-	volumeSourse := corev1.VolumeSource{
-		EmptyDir: &corev1.EmptyDirVolumeSource{},
-	}
-	for _, taskResource := range t.Spec.Inputs.Resources {
-		if taskResource.Type == pipestudiov1alpha1.PipelineResourceTypeGit {
-			// TODO(找到对应的TaskRun里的inputs中的pipelineResource，填入GitRepo的Repository中)
-			volumeSourse = corev1.VolumeSource{
-				GitRepo: &corev1.GitRepoVolumeSource{
-					
-					Directory: taskResource.TargetPath,
-				},
+	// 把task的Outputs中的TaskResource作为volume绑在要创建的pod上。
+	if t.Spec.Outputs != nil {
+		for _, tr := range t.Spec.Outputs.Resources {
+			if taskResourceMap[tr.Name] {
+				continue
 			}
-			break
+			// TODO(改成pvc，这样才能在Task之间传递)
+			volumes = append(volumes, corev1.Volume{
+				Name: tr.Name,
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				},
+			})
+			volumeMounts = append(volumeMounts, corev1.VolumeMount{
+				Name:      tr.Name,
+				MountPath: getPathFromTR(tr, "output"),
+			})
 		}
+
+	}
+
+	containers := t.Spec.Steps
+
+	for i := 0; i < len(containers); i++ {
+		containers[i].VolumeMounts = append(containers[i].VolumeMounts, volumeMounts...)
 	}
 
 	return &corev1.Pod{
 		ObjectMeta: tr.GetBuildPodMeta(),
 		Spec: corev1.PodSpec{
 			Containers: containers,
-			Volumes: append(t.Spec.Volumes, corev1.Volume{
-				Name: "workspace",
-				VolumeSource: volumeSourse,
-			}),
+			Volumes:    append(t.Spec.Volumes, volumes...),
 		},
 	}
 }
