@@ -4,12 +4,17 @@ metadata:
   name: read-task
 spec:
   inputs:
+    params:
+      - name: filename
     resources:
       - name: workspace
         type: git
   steps:
     - name: readme
       image: ubuntu
-      command: ["/bin/bash"]
-      args: ["-c", "cat Dockerfile"]
+      command: ["cat"]
+      args:
+        [
+          "${inputs.params.filename}",
+        ]
       workingDir: "/workspace/workspace"

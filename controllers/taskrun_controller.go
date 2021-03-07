@@ -18,7 +18,9 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -56,7 +58,7 @@ type TaskRunReconciler struct {
 func (r *TaskRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = r.Log.WithValues("taskrun", req.NamespacedName)
 
-	// your logic here
+	// TODO: 解决Params，加serviceAccount，这两个完成了基本就能完成build-push了
 
 	// retireve a TaskRun instance
 	instance := &pipestudiov1alpha1.TaskRun{}
@@ -103,7 +105,10 @@ func (r *TaskRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		r.Log.Error(err, "Failed to find pod", "taskRun.name", taskRun.Name)
 		if errors.IsNotFound(err) {
 			r.Log.Info("Creating a pod for TaskRun", "taskRun.name", taskRun.Name)
-			newPod := newPodForTaskRun(taskRun, task, inputPRIndexedByTaskResourceName)
+			newPod, err := newPodForTaskRun(taskRun, task, inputPRIndexedByTaskResourceName)
+			if err != nil {
+				r.Log.Error(err, "Parameters of pod is wrong", "pod.name", newPod.Name)
+			}
 			if err := ctrl.SetControllerReference(taskRun, newPod, r.Scheme); err != nil {
 				return ctrl.Result{}, err
 			}
@@ -154,10 +159,51 @@ func getURLFromPR(pr pipestudiov1alpha1.PipelineResource) string {
 	}
 	return ""
 }
-func newPodForTaskRun(tr *pipestudiov1alpha1.TaskRun, t *pipestudiov1alpha1.Task, im map[string]pipestudiov1alpha1.PipelineResource) *corev1.Pod {
+
+type params map[string]string
+
+func replaceTaskParams(tr *pipestudiov1alpha1.TaskRun, t *pipestudiov1alpha1.Task) (result params, err error) {
+	err = nil
+	result = params{}
+	turnToParams := func(ps []pipestudiov1alpha1.Param) (r params) {
+		r = params{}
+		for _, p := range ps {
+			r[p.Name] = p.Value
+		}
+		return
+	}
+
+	taskrunInputs := turnToParams(tr.Spec.Inputs.Params)
+
+	taskInputs := t.Spec.Inputs.Params
+
+	for _, param := range taskInputs {
+		if v, ok := taskrunInputs[param.Name]; ok {
+			result[fmt.Sprintf("inputs.params.%s", param.Name)] = v
+		} else if param.Default != "" {
+			result[fmt.Sprintf("inputs.params.%s", param.Name)] = param.Default
+		} else {
+			err = fmt.Errorf("the parameter %s in task inputs does not have default value and there is no value in taskrun can be refered", param.Name)
+		}
+	}
+
+	for k := range taskrunInputs {
+		if _, ok := result[fmt.Sprintf("inputs.params.%s", k)]; !ok {
+			err = fmt.Errorf("the parameter %s in taskrun inputs dose not have reference in task", k)
+		}
+	}
+
+	return
+}
+
+func newPodForTaskRun(tr *pipestudiov1alpha1.TaskRun, t *pipestudiov1alpha1.Task, im map[string]pipestudiov1alpha1.PipelineResource) (pod *corev1.Pod, err error) {
 
 	// add volumeMount into containers
-	// TODO(把gitRepo对应的东西也加在Container里)
+	err = nil
+	inputParams, err := replaceTaskParams(tr, t)
+	if err != nil {
+		return nil, err
+	}
 
 	volumeMounts := []corev1.VolumeMount{}
 	volumes := []corev1.Volume{}
@@ -209,6 +255,23 @@ func newPodForTaskRun(tr *pipestudiov1alpha1.TaskRun, t *pipestudiov1alpha1.Task
 
 	for i := 0; i < len(containers); i++ {
 		containers[i].VolumeMounts = append(containers[i].VolumeMounts, volumeMounts...)
+		for j := 0; j < len(containers[i].Args); j++ {
+			arg := containers[i].Args[j]
+			for {
+				if index := strings.Index(arg, "${"); index != -1 {
+					rightBracketI := strings.Index(arg, "}")
+					if _, ok := inputParams[arg[index+2:rightBracketI]]; ok {
+						arg = arg[:index] + inputParams[arg[index+2:rightBracketI]] + arg[rightBracketI+1:]
+					} else {
+						err = fmt.Errorf("Can't find %s", arg[index+2:rightBracketI])
+						break
+					}
+				} else {
+					break
+				}
+			}
+			containers[i].Args[j] = arg
+		}
 	}
 
 	return &corev1.Pod{
@@ -217,7 +280,7 @@ func newPodForTaskRun(tr *pipestudiov1alpha1.TaskRun, t *pipestudiov1alpha1.Task
 			Containers: containers,
 			Volumes:    append(t.Spec.Volumes, volumes...),
 		},
-	}
+	}, err
 }
 
 // SetupWithManager sets up the controller with the Manager.

@@ -12,3 +12,6 @@ spec:
       - name: workspace
         resourceRef:
           name: go-example-git
+    params:
+      - name: filename
+        value: Dockerfile
