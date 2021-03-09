@@ -124,6 +124,8 @@ spec:
                       type: object
                     type: array
                 type: object
+              serviceAccount:
+                type: string
               taskRef:
                 description: TaskRef can be used to refer to a specific instance of
                   a task.

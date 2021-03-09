@@ -274,11 +274,17 @@ func newPodForTaskRun(tr *pipestudiov1alpha1.TaskRun, t *pipestudiov1alpha1.Task
 		}
 	}
 
+	serviceAccount := "default"
+	if tr.Spec.ServiceAccount != "" {
+		serviceAccount = tr.Spec.ServiceAccount
+	}
+
 	return &corev1.Pod{
 		ObjectMeta: tr.GetBuildPodMeta(),
 		Spec: corev1.PodSpec{
-			Containers: containers,
-			Volumes:    append(t.Spec.Volumes, volumes...),
+			ServiceAccountName: serviceAccount,
+			Containers:         containers,
+			Volumes:            append(t.Spec.Volumes, volumes...),
 		},
 	}, err
 }
