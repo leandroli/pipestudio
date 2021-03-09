@@ -1,0 +1,43 @@
+apiVersion: pipestudio.github.com/v1alpha1
+kind: Task
+metadata:
+  name: build-push
+spec:
+  inputs:
+    resources:
+      - name: go-boilerplate
+        type: git
+    params:
+      - name: dockerfileName
+        description: The name of the Dockerfile
+        default: Dockerfile
+  steps:
+    - name: dockerfile-build
+      image: docker
+      workingDir: "/workspace"
+      args:
+        [
+          "build",
+          "--no-cache",
+          "--tag",
+          "leandro21/pipe",
+          "--file",
+          "${inputs.params.dockerfileName}",
+          ".",
+        ]
+      volumeMounts:
+        - name: docker-socket
+          mountPath: /var/run/docker.sock
+
+    - name: dockerfile-push
+      image: docker
+      args: ["push", "leandro21/pipe"]
+      volumeMounts:
+        - name: docker-socket
+          mountPath: /var/run/docker.sock
+
+  volumes:
+    - name: docker-socket
+      hostPath:
+        path: /var/run/docker.sock
+        type: Socket

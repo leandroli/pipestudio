@@ -107,14 +107,15 @@ func (r *TaskRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			r.Log.Info("Creating a pod for TaskRun", "taskRun.name", taskRun.Name)
 			newPod, err := newPodForTaskRun(taskRun, task, inputPRIndexedByTaskResourceName)
 			if err != nil {
-				r.Log.Error(err, "Parameters of pod is wrong", "pod.name", newPod.Name)
+				r.Log.Error(err, "Parameters of pod is wrong", "taskRun.name", taskRun.Name)
+				return ctrl.Result{}, nil
 			}
 			if err := ctrl.SetControllerReference(taskRun, newPod, r.Scheme); err != nil {
 				return ctrl.Result{}, err
 			}
 			err = r.Create(ctx, newPod)
 			if err != nil {
-				r.Log.Error(err, "Failed to create pod", "pod.name", newPod.Name)
+				r.Log.Error(err, "Failed to create pod", "taskRun.name", taskRun.Name)
 				return ctrl.Result{}, err
 			}
 			r.Log.Info("A pod has been created for TaskRun", "taskRun.name", taskRun.Name)
