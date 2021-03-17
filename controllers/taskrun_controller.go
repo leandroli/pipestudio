@@ -254,24 +254,35 @@ func newPodForTaskRun(tr *pipestudiov1alpha1.TaskRun, t *pipestudiov1alpha1.Task
 
 	containers := t.Spec.Steps
 
-	for i := 0; i < len(containers); i++ {
-		containers[i].VolumeMounts = append(containers[i].VolumeMounts, volumeMounts...)
-		for j := 0; j < len(containers[i].Args); j++ {
-			arg := containers[i].Args[j]
-			for {
-				if index := strings.Index(arg, "${"); index != -1 {
-					rightBracketI := strings.Index(arg, "}")
-					if _, ok := inputParams[arg[index+2:rightBracketI]]; ok {
-						arg = arg[:index] + inputParams[arg[index+2:rightBracketI]] + arg[rightBracketI+1:]
-					} else {
-						err = fmt.Errorf("Can't find %s", arg[index+2:rightBracketI])
-						break
-					}
-				} else {
+	// 用来替换arg和workingDir
+	replace := func(str string) (result string, err error) {
+		for {
+			if index := strings.Index(str, "${"); index != -1 {
+				rightBracketI := strings.Index(str, "}")
+				// 找不到}退出
+				if rightBracketI == -1 {
 					break
 				}
+				if _, ok := inputParams[str[index+2:rightBracketI]]; ok {
+					str = str[:index] + inputParams[str[index+2:rightBracketI]] + str[rightBracketI+1:]
+				} else {
+					err = fmt.Errorf("Can't find %s", str[index+2:rightBracketI])
+					break
+				}
+			} else {
+				break
 			}
-			containers[i].Args[j] = arg
+		}
+		result = str
+		return
+	}
+
+	//检查替换args和workingDir
+	for i := 0; i < len(containers); i++ {
+		containers[i].VolumeMounts = append(containers[i].VolumeMounts, volumeMounts...)
+		containers[i].WorkingDir, err = replace(containers[i].WorkingDir)
+		for j := 0; j < len(containers[i].Args); j++ {
+			containers[i].Args[j], err = replace(containers[i].Args[j])
 		}
 	}
 

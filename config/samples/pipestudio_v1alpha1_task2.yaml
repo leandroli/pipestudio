@@ -11,16 +11,20 @@ spec:
       - name: dockerfileName
         description: The name of the Dockerfile
         default: Dockerfile
+      - name: imageTag
+        description: tag of docker image
+      - name: workspace
+        description: working directory
   steps:
     - name: dockerfile-build
       image: docker
-      workingDir: "/workspace"
+      workingDir: "${inputs.params.workspace}"
       args:
         [
           "build",
           "--no-cache",
           "--tag",
-          "leandro21/pipe",
+          "${inputs.params.imageTag}",
           "--file",
           "${inputs.params.dockerfileName}",
           ".",

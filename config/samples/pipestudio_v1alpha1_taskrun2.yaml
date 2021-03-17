@@ -16,3 +16,7 @@ spec:
     params:
       - name: dockerfileName
         value: go-boilerplate/Dockerfile
+      - name: imageTag
+        value: leandro21/pipe
+      - name: workspace
+        value: /workspace
