@@ -20,22 +20,67 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
-// PipelineSpec defines the desired state of Pipeline
 type PipelineSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of Pipeline. Edit Pipeline_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	Params []PipelineParam `json:"params,omitempty"`
+	Tasks []PipelineTask `json:"tasks"`
+	Resources []PipelineResource `json:"resources,omitempty"`
 }
 
 // PipelineStatus defines the observed state of Pipeline
 type PipelineStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+}
+
+// PipelineParam defines the parameter needed by Pipeline
+type PipelineParam struct {
+	Name string `json:"name"`
+	Description string `json:"description"`
+	Default string `json:"default,omitempty"`
+}
+
+// PipelineDeclaredResource describes names which can be used to refer to PipelineResources
+// and types of them
+type PipelineDeclaredResource struct {
+	// Name is not correspond with actual name of PipelineResource, it is used by the Pipeline
+	// to refer to PipelineResource
+	Name string `json:"name"`
+	Type PipelineResourceType `json:"type"`
+}
+
+// PipelineTask defines a task in Pipeline
+type PipelineTask struct {
+	Name string `json:"name"`
+	TaskRef TaskRef `json:"taskRef"`
+	Resources *PipelineTaskResources `json:"resources,omitempty"`
+	Params []Param `json:"params,omitempty"`
+}
+
+// PipelineTaskResources map the DeclaredPipelineResources of Pipeline to the resources
+// that required by tasks
+type PipelineTaskResources struct {
+	// Inputs holds the mapping from the PipelineResources declared in
+	// DeclaredPipelineResources to the input PipelineResources required by the Task.
+	Inputs []PipelineTaskInputResource `json:"inputs,omitempty"`
+	// Outputs holds the mapping from the PipelineResources declared in
+	// DeclaredPipelineResources to the input PipelineResources required by the Task.
+	Outputs []PipelineTaskOutputResource `json:"outputs,omitempty"`
+}
+
+// PipelineTaskInputResource maps the name of a PipelineResource declared by Task 
+// to the resource in the Pipeline's DeclaredPipelineResources that should be used.
+type PipelineTaskInputResource struct {
+	// Name is the name of the PipelineResource as declared by the Task.
+	Name string `json:"name"`
+	// Resource is the name of the DeclaredPipelineResource to use.
+	Resource string `json:"resource"`
+}
+
+// PipelineTaskOutputResource maps the name of a PipelineResource declared by Task 
+// to the resource in the Pipeline's DeclaredPipelineResources that should be used.
+type PipelineTaskOutputResource struct {
+	// Name is the name of the PipelineResource as declared by the Task.
+	Name string `json:"name"`
+	// Resource is the name of the DeclaredPipelienResource to use.
+	Resource string `json:"resource"`
 }
 
 // +kubebuilder:object:root=true
