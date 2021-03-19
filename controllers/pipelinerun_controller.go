@@ -20,6 +20,7 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -39,7 +40,7 @@ type PipelineRunReconciler struct {
 // +kubebuilder:rbac:groups=pipestudio.github.com,resources=pipelineruns/finalizers,verbs=update
 // +kubebuilder:rbac:groups=pipestudio.github.com,resources=taskruns,verbs=get;list;watch;creat;update;patch;delete
 // +kubebuilder:rbac:groups=pipestudio.github.com,resources=taskruns/status,verbs=get;update;patch
-
+// +kubebuilder:rbac:groups=pipestudio.github.com,resources=tasks,verbs=get;list;watch;creat;update;patch;delete
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 // TODO(user): Modify the Reconcile function to compare the state specified by
@@ -52,7 +53,32 @@ type PipelineRunReconciler struct {
 func (r *PipelineRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = r.Log.WithValues("pipelinerun", req.NamespacedName)
 
-	// your logic here
+	// retrieve a pipelineRun instance
+	instance := &pipestudiov1alpha1.PipelineRun{}
+	err := r.Get(ctx, req.NamespacedName, instance)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// Request object not found, could have been deleted after reconcile request.
+			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
+			// Return and don't requeue
+			return ctrl.Result{}, nil
+		}
+		// Error reading the object - requeue the request.
+		return ctrl.Result{}, err
+	}
+	pipelineRun := instance
+
+	// retrieve the pipeline to which piplineRun refer
+	pipeline := &pipestudiov1alpha1.Pipeline{}
+	err = r.Get(ctx, client.ObjectKey{Name: pipelineRun.Spec.PipelineRef.Name, Namespace: pipelineRun.Namespace}, pipeline)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return ctrl.Result{}, nil
+		}
+		return ctrl.Result{}, err
+	}
+
+	//	tasks := pipeline.Spec.Tasks
 
 	return ctrl.Result{}, nil
 }
@@ -61,5 +87,7 @@ func (r *PipelineRunReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 func (r *PipelineRunReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&pipestudiov1alpha1.PipelineRun{}).
+		Owns(&pipestudiov1alpha1.TaskRun{}).
+		Owns(&pipestudiov1alpha1.Task{}).
 		Complete(r)
 }
