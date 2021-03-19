@@ -297,6 +297,7 @@ func newPodForTaskRun(tr *pipestudiov1alpha1.TaskRun, t *pipestudiov1alpha1.Task
 			ServiceAccountName: serviceAccount,
 			Containers:         containers,
 			Volumes:            append(t.Spec.Volumes, volumes...),
+			RestartPolicy:      "OnFailure",
 		},
 	}, err
 }
