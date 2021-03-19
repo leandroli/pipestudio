@@ -86,6 +86,14 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "TaskRun")
 		os.Exit(1)
 	}
+	if err = (&controllers.PipelineRunReconciler{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("PipelineRun"),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "PipelineRun")
+		os.Exit(1)
+	}
 	// +kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("health", healthz.Ping); err != nil {

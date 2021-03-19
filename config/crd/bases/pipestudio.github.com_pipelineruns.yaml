@@ -1,0 +1,297 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.4.1
+  creationTimestamp: null
+  name: pipelineruns.pipestudio.github.com
+spec:
+  group: pipestudio.github.com
+  names:
+    kind: PipelineRun
+    listKind: PipelineRunList
+    plural: pipelineruns
+    singular: pipelinerun
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: PipelineRun is the Schema for the pipelineruns API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: PipelineRunSpec defines the desired state of PipelineRun
+            properties:
+              params:
+                description: Params is a list of parameter names and values.
+                items:
+                  description: Param declares a value to use for the Param called
+                    Name.
+                  properties:
+                    name:
+                      type: string
+                    value:
+                      type: string
+                  required:
+                  - name
+                  - value
+                  type: object
+                type: array
+              piplineRef:
+                description: PipelineRef defines the Pipeline to refer to
+                properties:
+                  name:
+                    description: Name of the referent
+                    type: string
+                required:
+                - name
+                type: object
+              resources:
+                items:
+                  description: PipelineResourceBinding is used to bind actual PipelineResource
+                    to the name of PipelineResource declared by Pipeline
+                  properties:
+                    name:
+                      description: Name is the name of PipelineResource decleared
+                        in Pipeline
+                      type: string
+                    resourceRef:
+                      description: ResourceRef defines the PipelineResource to refer
+                        to
+                      properties:
+                        apiVersion:
+                          description: API version of the referent
+                          type: string
+                        name:
+                          description: 'Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names'
+                          type: string
+                      required:
+                      - name
+                      type: object
+                  required:
+                  - name
+                  - resourceRef
+                  type: object
+                type: array
+              serviceAccount:
+                type: string
+            required:
+            - piplineRef
+            type: object
+          status:
+            description: PipelineRunStatus defines the observed state of PipelineRun
+            properties:
+              taskRuns:
+                additionalProperties:
+                  description: TaskRunStatus defines the observed state of TaskRun
+                  properties:
+                    podName:
+                      description: PodName is the name of the pod responsible for
+                        executing this task's steps.
+                      type: string
+                    steps:
+                      description: Steps describes the state of each build step container.
+                      items:
+                        description: ContainerStatus contains details for the current
+                          status of this container.
+                        properties:
+                          containerID:
+                            description: Container's ID in the format 'docker://<container_id>'.
+                            type: string
+                          image:
+                            description: 'The image the container is running. More
+                              info: https://kubernetes.io/docs/concepts/containers/images
+                              TODO(dchen1107): Which image the container is running
+                              with?'
+                            type: string
+                          imageID:
+                            description: ImageID of the container's image.
+                            type: string
+                          lastState:
+                            description: Details about the container's last termination
+                              condition.
+                            properties:
+                              running:
+                                description: Details about a running container
+                                properties:
+                                  startedAt:
+                                    description: Time at which the container was last
+                                      (re-)started
+                                    format: date-time
+                                    type: string
+                                type: object
+                              terminated:
+                                description: Details about a terminated container
+                                properties:
+                                  containerID:
+                                    description: Container's ID in the format 'docker://<container_id>'
+                                    type: string
+                                  exitCode:
+                                    description: Exit status from the last termination
+                                      of the container
+                                    format: int32
+                                    type: integer
+                                  finishedAt:
+                                    description: Time at which the container last
+                                      terminated
+                                    format: date-time
+                                    type: string
+                                  message:
+                                    description: Message regarding the last termination
+                                      of the container
+                                    type: string
+                                  reason:
+                                    description: (brief) reason from the last termination
+                                      of the container
+                                    type: string
+                                  signal:
+                                    description: Signal from the last termination
+                                      of the container
+                                    format: int32
+                                    type: integer
+                                  startedAt:
+                                    description: Time at which previous execution
+                                      of the container started
+                                    format: date-time
+                                    type: string
+                                required:
+                                - exitCode
+                                type: object
+                              waiting:
+                                description: Details about a waiting container
+                                properties:
+                                  message:
+                                    description: Message regarding why the container
+                                      is not yet running.
+                                    type: string
+                                  reason:
+                                    description: (brief) reason the container is not
+                                      yet running.
+                                    type: string
+                                type: object
+                            type: object
+                          name:
+                            description: This must be a DNS_LABEL. Each container
+                              in a pod must have a unique name. Cannot be updated.
+                            type: string
+                          ready:
+                            description: Specifies whether the container has passed
+                              its readiness probe.
+                            type: boolean
+                          restartCount:
+                            description: The number of times the container has been
+                              restarted, currently based on the number of dead containers
+                              that have not yet been removed. Note that this is calculated
+                              from dead containers. But those containers are subject
+                              to garbage collection. This value will get capped at
+                              5 by GC.
+                            format: int32
+                            type: integer
+                          started:
+                            description: Specifies whether the container has passed
+                              its startup probe. Initialized as false, becomes true
+                              after startupProbe is considered successful. Resets
+                              to false when the container is restarted, or if kubelet
+                              loses state temporarily. Is always true when no startupProbe
+                              is defined.
+                            type: boolean
+                          state:
+                            description: Details about the container's current condition.
+                            properties:
+                              running:
+                                description: Details about a running container
+                                properties:
+                                  startedAt:
+                                    description: Time at which the container was last
+                                      (re-)started
+                                    format: date-time
+                                    type: string
+                                type: object
+                              terminated:
+                                description: Details about a terminated container
+                                properties:
+                                  containerID:
+                                    description: Container's ID in the format 'docker://<container_id>'
+                                    type: string
+                                  exitCode:
+                                    description: Exit status from the last termination
+                                      of the container
+                                    format: int32
+                                    type: integer
+                                  finishedAt:
+                                    description: Time at which the container last
+                                      terminated
+                                    format: date-time
+                                    type: string
+                                  message:
+                                    description: Message regarding the last termination
+                                      of the container
+                                    type: string
+                                  reason:
+                                    description: (brief) reason from the last termination
+                                      of the container
+                                    type: string
+                                  signal:
+                                    description: Signal from the last termination
+                                      of the container
+                                    format: int32
+                                    type: integer
+                                  startedAt:
+                                    description: Time at which previous execution
+                                      of the container started
+                                    format: date-time
+                                    type: string
+                                required:
+                                - exitCode
+                                type: object
+                              waiting:
+                                description: Details about a waiting container
+                                properties:
+                                  message:
+                                    description: Message regarding why the container
+                                      is not yet running.
+                                    type: string
+                                  reason:
+                                    description: (brief) reason the container is not
+                                      yet running.
+                                    type: string
+                                type: object
+                            type: object
+                        required:
+                        - image
+                        - imageID
+                        - name
+                        - ready
+                        - restartCount
+                        type: object
+                      type: array
+                  required:
+                  - podName
+                  type: object
+                type: object
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
