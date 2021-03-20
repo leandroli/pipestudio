@@ -48,38 +48,27 @@ type PipelineDeclaredResource struct {
 
 // PipelineTask defines a task in Pipeline
 type PipelineTask struct {
-	Name      string                 `json:"name"`
-	TaskRef   TaskRef                `json:"taskRef"`
-	Resources *PipelineTaskResources `json:"resources,omitempty"`
-	Params    []Param                `json:"params,omitempty"`
+	Name    string              `json:"name"`
+	TaskRef TaskRef             `json:"taskRef"`
+	Inputs  *PipelineTaskInputs  `json:"inputs,omitempty"`
+	Outputs *PipelineTaskOutputs `json:"outputs,omitempty"`
+}
+
+type PipelineTaskInputs struct {
+	Resources []PipelineTaskResource `json:"resources"`
+	Params    []Param                `json:"params"`
+}
+
+type PipelineTaskOutputs struct {
+	Resources []PipelineTaskResource `json:"resources"`
 }
 
 // PipelineTaskResources map the DeclaredPipelineResources of Pipeline to the resources
 // that required by tasks
-type PipelineTaskResources struct {
-	// Inputs holds the mapping from the PipelineResources declared in
-	// DeclaredPipelineResources to the input PipelineResources required by the Task.
-	Inputs []PipelineTaskInputResource `json:"inputs,omitempty"`
-	// Outputs holds the mapping from the PipelineResources declared in
-	// DeclaredPipelineResources to the input PipelineResources required by the Task.
-	Outputs []PipelineTaskOutputResource `json:"outputs,omitempty"`
-}
-
-// PipelineTaskInputResource maps the name of a PipelineResource declared by Task
-// to the resource in the Pipeline's DeclaredPipelineResources that should be used.
-type PipelineTaskInputResource struct {
+type PipelineTaskResource struct {
 	// Name is the name of the PipelineResource as declared by the Task.
 	Name string `json:"name"`
 	// Resource is the name of the DeclaredPipelineResource to use.
-	Resource string `json:"resource"`
-}
-
-// PipelineTaskOutputResource maps the name of a PipelineResource declared by Task
-// to the resource in the Pipeline's DeclaredPipelineResources that should be used.
-type PipelineTaskOutputResource struct {
-	// Name is the name of the PipelineResource as declared by the Task.
-	Name string `json:"name"`
-	// Resource is the name of the DeclaredPipelienResource to use.
 	Resource string `json:"resource"`
 }
 

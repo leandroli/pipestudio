@@ -78,7 +78,11 @@ func (r *PipelineRunReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return ctrl.Result{}, err
 	}
 
-	//	tasks := pipeline.Spec.Tasks
+	// execute tasks sequentially in the order of declaration in Pipeline
+	// pipelineTasks := pipeline.Spec.Tasks
+	// for _, pipelineTask := range pipelineTasks {
+	// 	//pipelineTask.TaskRef =
+	// }
 
 	return ctrl.Result{}, nil
 }

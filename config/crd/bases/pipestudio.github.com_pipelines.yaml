@@ -106,35 +106,26 @@ spec:
                 items:
                   description: PipelineTask defines a task in Pipeline
                   properties:
-                    name:
-                      type: string
-                    params:
-                      items:
-                        description: Param declares a value to use for the Param called
-                          Name.
-                        properties:
-                          name:
-                            type: string
-                          value:
-                            type: string
-                        required:
-                        - name
-                        - value
-                        type: object
-                      type: array
-                    resources:
-                      description: PipelineTaskResources map the DeclaredPipelineResources
-                        of Pipeline to the resources that required by tasks
+                    inputs:
                       properties:
-                        inputs:
-                          description: Inputs holds the mapping from the PipelineResources
-                            declared in DeclaredPipelineResources to the input PipelineResources
-                            required by the Task.
+                        params:
                           items:
-                            description: PipelineTaskInputResource maps the name of
-                              a PipelineResource declared by Task to the resource
-                              in the Pipeline's DeclaredPipelineResources that should
-                              be used.
+                            description: Param declares a value to use for the Param
+                              called Name.
+                            properties:
+                              name:
+                                type: string
+                              value:
+                                type: string
+                            required:
+                            - name
+                            - value
+                            type: object
+                          type: array
+                        resources:
+                          items:
+                            description: PipelineTaskResources map the DeclaredPipelineResources
+                              of Pipeline to the resources that required by tasks
                             properties:
                               name:
                                 description: Name is the name of the PipelineResource
@@ -149,22 +140,25 @@ spec:
                             - resource
                             type: object
                           type: array
-                        outputs:
-                          description: Outputs holds the mapping from the PipelineResources
-                            declared in DeclaredPipelineResources to the input PipelineResources
-                            required by the Task.
+                      required:
+                      - params
+                      - resources
+                      type: object
+                    name:
+                      type: string
+                    outputs:
+                      properties:
+                        resources:
                           items:
-                            description: PipelineTaskOutputResource maps the name
-                              of a PipelineResource declared by Task to the resource
-                              in the Pipeline's DeclaredPipelineResources that should
-                              be used.
+                            description: PipelineTaskResources map the DeclaredPipelineResources
+                              of Pipeline to the resources that required by tasks
                             properties:
                               name:
                                 description: Name is the name of the PipelineResource
                                   as declared by the Task.
                                 type: string
                               resource:
-                                description: Resource is the name of the DeclaredPipelienResource
+                                description: Resource is the name of the DeclaredPipelineResource
                                   to use.
                                 type: string
                             required:
@@ -172,6 +166,8 @@ spec:
                             - resource
                             type: object
                           type: array
+                      required:
+                      - resources
                       type: object
                     taskRef:
                       description: TaskRef can be used to refer to a specific instance
