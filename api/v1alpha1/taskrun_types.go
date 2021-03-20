@@ -25,11 +25,11 @@ import (
 
 // TaskRunSpec defines the desired state of TaskRun
 type TaskRunSpec struct {
-	TaskRef        *TaskRef       `json:"taskRef,omitempty"`
-	Trigger        TaskTrigger    `json:"trigger,omitempty"`
-	Inputs         TaskRunInputs  `json:"inputs,omitempty"`
-	Outputs        TaskRunOutputs `json:"outputs,omitempty"`
-	ServiceAccount string         `json:"serviceAccount,omitempty"`
+	TaskRef        TaskRef         `json:"taskRef,omitempty"`
+	Trigger        TaskTrigger     `json:"trigger,omitempty"`
+	Inputs         *TaskRunInputs  `json:"inputs,omitempty"`
+	Outputs        *TaskRunOutputs `json:"outputs,omitempty"`
+	ServiceAccount string          `json:"serviceAccount,omitempty"`
 }
 
 // TaskRunInputs holds the input values that this task was invoked with.

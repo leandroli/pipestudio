@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -26,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	pipestudiov1alpha1 "github.com/leandroli/pipestudio/api/v1alpha1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // PipelineRunReconciler reconciles a PipelineRun object
@@ -79,12 +81,67 @@ func (r *PipelineRunReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	// execute tasks sequentially in the order of declaration in Pipeline
-	// pipelineTasks := pipeline.Spec.Tasks
-	// for _, pipelineTask := range pipelineTasks {
-	// 	//pipelineTask.TaskRef =
-	// }
+	pipelineTasks := pipeline.Spec.Tasks
+	for _, pipelineTask := range pipelineTasks {
+		// 给每个一pipelineTask创建一个TaskRun，监控这个taskRun对应的pod，正常结束后执行下一个
+		taskrun, err := newTaskRunforPipelineTask(&pipelineTask, pipelineRun)
+		if err != nil {
+			r.Log.Error(err, "Fail to generate taskRun", "pipelineTask.name", pipelineTask.Name)
+			return ctrl.Result{}, nil
+		}
+		if err = ctrl.SetControllerReference(pipelineRun, taskrun, r.Scheme); err != nil {
+			return ctrl.Result{}, err
+		}
+		if err = r.Create(ctx, taskrun); err != nil {
+			r.Log.Error(err, "Fail to create taskrun", "taskrun.name", taskrun.Name)
+			return ctrl.Result{Requeue: false}, err
+		}
+		r.Log.Info("a TaskRun has been created", "pipelineTask.name", pipelineTask.Name, "taskrun.name", taskrun.Name)
+		
+
+		//
+	}
 
 	return ctrl.Result{}, nil
+}
+
+
+func newTaskRunforPipelineTask(pt *pipestudiov1alpha1.PipelineTask,
+	pr *pipestudiov1alpha1.PipelineRun) (taskrun *pipestudiov1alpha1.TaskRun, err error) {
+	//
+	
+	findResourceRef := func (name string) (pipestudiov1alpha1.PipelineResourceRef, error) {
+		for _, resource := range pr.Spec.Resources {
+			if resource.Name == name {
+				return resource.ResourceRef, nil
+			}
+		}
+		return pipestudiov1alpha1.PipelineResourceRef{}, fmt.Errorf("can't find resource %s in PipelineRun", name)
+	} 
+
+	taskRunInputs := &pipestudiov1alpha1.TaskRunInputs{}
+	for _, resource := range pt.Inputs.Resources {
+		resourceRef, err := findResourceRef(resource.Resource)
+		if err != nil {
+			return nil, err
+		}
+		taskRunInputs.Resources = append(taskRunInputs.Resources, pipestudiov1alpha1.TaskResourceBinding{
+			Name: resource.Name,
+			ResourceRef: resourceRef,
+		})
+	}
+	taskRunInputs.Params = pt.Inputs.Params
+	return &pipestudiov1alpha1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      pr.Name + "-" + pt.Name,
+			Namespace: pr.Namespace,
+		},
+		Spec: pipestudiov1alpha1.TaskRunSpec{
+			ServiceAccount: pr.Spec.ServiceAccount,
+			TaskRef:        pt.TaskRef,
+			Inputs:         taskRunInputs,
+		},
+	}, err
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -92,6 +149,5 @@ func (r *PipelineRunReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&pipestudiov1alpha1.PipelineRun{}).
 		Owns(&pipestudiov1alpha1.TaskRun{}).
-		Owns(&pipestudiov1alpha1.Task{}).
 		Complete(r)
 }

@@ -48,8 +48,8 @@ type PipelineDeclaredResource struct {
 
 // PipelineTask defines a task in Pipeline
 type PipelineTask struct {
-	Name    string              `json:"name"`
-	TaskRef TaskRef             `json:"taskRef"`
+	Name    string               `json:"name"`
+	TaskRef TaskRef              `json:"taskRef"`
 	Inputs  *PipelineTaskInputs  `json:"inputs,omitempty"`
 	Outputs *PipelineTaskOutputs `json:"outputs,omitempty"`
 }
