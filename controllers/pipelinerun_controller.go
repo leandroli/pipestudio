@@ -19,10 +19,12 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -73,7 +75,13 @@ func (r *PipelineRunReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	// retrieve the pipeline to which piplineRun refer
 	pipeline := &pipestudiov1alpha1.Pipeline{}
-	err = r.Get(ctx, client.ObjectKey{Name: pipelineRun.Spec.PipelineRef.Name, Namespace: pipelineRun.Namespace}, pipeline)
+	err = r.Get(ctx,
+		client.ObjectKey{
+			Name:      pipelineRun.Spec.PipelineRef.Name,
+			Namespace: pipelineRun.Namespace,
+		},
+		pipeline,
+	)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -81,40 +89,49 @@ func (r *PipelineRunReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return ctrl.Result{}, err
 	}
 
-	// execute tasks sequentially in the order of declaration in Pipeline
-	// create first taskrun here
-	var firstPipelineTask pipestudiov1alpha1.PipelineTask
-	if len(pipeline.Spec.Tasks) != 0 {
-		firstPipelineTask = pipeline.Spec.Tasks[0]
-	} else {
-		r.Log.Error(fmt.Errorf("there is no task in this pipeline"), "No Task in Pipeline")
-	}
-
+	// update pipelineRun status
 	// list the taskRun related to this pipelineRun. if there is no taskrun, create one
 	taskRunList := &pipestudiov1alpha1.TaskRunList{}
-	// TODO(add label to TaskRun resources)
-	if err := r.List(ctx, taskRunList, &client.ListOptions{Namespace: pipelineRun.Namespace}); err != nil {
+	lbs := map[string]string{
+		"pipelinerun": pipelineRun.Name,
+	}
+	labelSelector := labels.SelectorFromSet(lbs)
+	if err := r.List(
+		ctx, taskRunList,
+		&client.ListOptions{
+			Namespace:     pipelineRun.Namespace,
+			LabelSelector: labelSelector,
+		},
+	); err != nil {
 		if errors.IsNotFound(err) {
-			taskrun, err := newTaskRunforPipelineTask(&firstPipelineTask, pipelineRun)
-			if err != nil {
-				r.Log.Error(err, "Fail to generate TaskRun", "PipelineTask.name", firstPipelineTask.Name)
-				return ctrl.Result{}, nil
+			pipelineRun.Status = pipestudiov1alpha1.PipelineRunStatus{
+				TaskRuns: nil,
 			}
-			if err = ctrl.SetControllerReference(pipelineRun, taskrun, r.Scheme); err != nil {
+			if err := r.Update(ctx, pipelineRun); err != nil {
+				r.Log.Error(err, "Failed to update PipelineRun status")
 				return ctrl.Result{}, err
 			}
-			if err = r.Create(ctx, taskrun); err != nil {
-				r.Log.Error(err, "Fail to create Taskrun", "TaskRun.name", taskrun.Name)
-				requeueAfter, _ := time.ParseDuration("1m")
-				return ctrl.Result{Requeue: true, RequeueAfter: requeueAfter}, err
-			}
-			r.Log.Info("a TaskRun has been created", "PipelineTask.name", firstPipelineTask.Name, "TaskRun.name", taskrun.Name)
-			return ctrl.Result{}, nil
+			r.Log.Info("Succeed to update pipelineRun status")
+		}
+	}
+	statuses := []pipestudiov1alpha1.PipelineTaskRunStatus{}
+	for _, taskRun := range taskRunList.Items {
+		statuses = append(
+			statuses,
+			pipestudiov1alpha1.PipelineTaskRunStatus{
+				Name:          taskRun.Name,
+				TaskRunStatus: taskRun.Status,
+			})
+	}
+	if !reflect.DeepEqual(pipelineRun.Status.TaskRuns, statuses) {
+		pipelineRun.Status.TaskRuns = statuses
+		if err = r.Status().Update(ctx, pipelineRun); err != nil {
+			r.Log.Error(err, "Failed to update PipelineRun status")
+			return ctrl.Result{}, err
 		}
 	}
 
-	// 给每个一pipelineTask创建一个TaskRun，监控这个taskRun对应的pod，正常结束后执行下一个
-
+	// execute tasks sequentially in the order of declaration in Pipeline
 	// check the status of taskrun and execute next one if it is exited whit 0
 	for i := 0; i < len(pipeline.Spec.Tasks); i++ {
 		pipelineTask := pipeline.Spec.Tasks[i]
@@ -143,9 +160,13 @@ func (r *PipelineRunReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			}
 			return ctrl.Result{}, err
 		}
-		for _, containerStatus := range taskRun.Status.Steps {
-			if containerStatus.State.Terminated == nil || containerStatus.State.Terminated.ExitCode != 0 {
-				return ctrl.Result{}, err
+		if taskRun.Status.Steps == nil {
+			return ctrl.Result{}, err
+		} else {
+			for _, containerStatus := range taskRun.Status.Steps {
+				if containerStatus.State.Terminated == nil || containerStatus.State.Terminated.ExitCode != 0 {
+					return ctrl.Result{}, err
+				}
 			}
 		}
 	}
@@ -153,8 +174,10 @@ func (r *PipelineRunReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	return ctrl.Result{}, nil
 }
 
-func newTaskRunforPipelineTask(pt *pipestudiov1alpha1.PipelineTask,
-	pr *pipestudiov1alpha1.PipelineRun) (taskrun *pipestudiov1alpha1.TaskRun, err error) {
+func newTaskRunforPipelineTask(
+	pt *pipestudiov1alpha1.PipelineTask,
+	pr *pipestudiov1alpha1.PipelineRun,
+) (taskrun *pipestudiov1alpha1.TaskRun, err error) {
 
 	findResourceRef := func(name string) (pipestudiov1alpha1.PipelineResourceRef, error) {
 		for _, resource := range pr.Spec.Resources {
@@ -162,7 +185,8 @@ func newTaskRunforPipelineTask(pt *pipestudiov1alpha1.PipelineTask,
 				return resource.ResourceRef, nil
 			}
 		}
-		return pipestudiov1alpha1.PipelineResourceRef{}, fmt.Errorf("can't find resource %s in PipelineRun", name)
+		return pipestudiov1alpha1.PipelineResourceRef{},
+			fmt.Errorf("can't find resource %s in PipelineRun", name)
 	}
 
 	taskRunInputs := &pipestudiov1alpha1.TaskRunInputs{}
@@ -181,6 +205,9 @@ func newTaskRunforPipelineTask(pt *pipestudiov1alpha1.PipelineTask,
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      pr.Name + "-" + pt.Name,
 			Namespace: pr.Namespace,
+			Labels: map[string]string{
+				"pipelinerun": pr.Name,
+			},
 		},
 		Spec: pipestudiov1alpha1.TaskRunSpec{
 			ServiceAccount: pr.Spec.ServiceAccount,

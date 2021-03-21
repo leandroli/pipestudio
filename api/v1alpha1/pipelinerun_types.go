@@ -31,7 +31,7 @@ type PipelineRunSpec struct {
 
 // PipelineRunStatus defines the observed state of PipelineRun
 type PipelineRunStatus struct {
-	TaskRuns map[string]TaskRunStatus `json:"taskRuns,omitempty"`
+	TaskRuns []PipelineTaskRunStatus `json:"taskRuns,omitempty"`
 }
 
 // PipelineRef defines the Pipeline to refer to
@@ -47,6 +47,11 @@ type PipelineResourceBinding struct {
 	Name string `json:"name"`
 	// ResourceRef defines the PipelineResource to refer to
 	ResourceRef PipelineResourceRef `json:"resourceRef"`
+}
+
+type PipelineTaskRunStatus struct {
+	Name          string        `json:"name"`
+	TaskRunStatus TaskRunStatus `json:"status"`
 }
 
 // +kubebuilder:object:root=true

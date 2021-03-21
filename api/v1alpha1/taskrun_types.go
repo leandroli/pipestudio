@@ -123,6 +123,9 @@ func (tr *TaskRun) GetBuildPodMeta() metav1.ObjectMeta {
 	return metav1.ObjectMeta{
 		Name:      tr.Name,
 		Namespace: tr.Namespace,
+		Labels: map[string]string{
+			"taskrun": tr.Name,
+		},
 	}
 }
 
