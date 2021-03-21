@@ -438,10 +438,8 @@ func (in *PipelineSpec) DeepCopyInto(out *PipelineSpec) {
 	}
 	if in.Resources != nil {
 		in, out := &in.Resources, &out.Resources
-		*out = make([]PipelineResource, len(*in))
-		for i := range *in {
-			(*in)[i].DeepCopyInto(&(*out)[i])
-		}
+		*out = make([]PipelineDeclaredResource, len(*in))
+		copy(*out, *in)
 	}
 }
 

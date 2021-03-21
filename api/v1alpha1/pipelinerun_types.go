@@ -22,7 +22,7 @@ import (
 
 // PipelineRunSpec defines the desired state of PipelineRun
 type PipelineRunSpec struct {
-	PipelineRef PipelineRef               `json:"piplineRef"`
+	PipelineRef PipelineRef               `json:"pipelineRef"`
 	Resources   []PipelineResourceBinding `json:"resources,omitempty"`
 	// Params is a list of parameter names and values.
 	Params         []Param `json:"params,omitempty"`

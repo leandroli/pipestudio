@@ -21,9 +21,9 @@ import (
 )
 
 type PipelineSpec struct {
-	Params    []PipelineParam    `json:"params,omitempty"`
-	Tasks     []PipelineTask     `json:"tasks"`
-	Resources []PipelineResource `json:"resources,omitempty"`
+	Params    []PipelineParam            `json:"params,omitempty"`
+	Tasks     []PipelineTask             `json:"tasks"`
+	Resources []PipelineDeclaredResource `json:"resources,omitempty"`
 }
 
 // PipelineStatus defines the observed state of Pipeline

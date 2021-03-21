@@ -1,0 +1,89 @@
+apiVersion: pipestudio.github.com/v1alpha1
+kind: PipelineResource
+metadata:
+  name: go-example-boilerplate
+spec:
+  type: git
+  params:
+    - name: url
+      value: https://github.com/l-lin/go-boilerplate
+---
+apiVersion: pipestudio.github.com/v1alpha1
+kind: PipelineResource
+metadata:
+  name: go-example-playground
+spec:
+  type: git
+  params:
+    - name: url
+      value: https://github.com/leandroli/my-golang-playground
+---
+apiVersion: pipestudio.github.com/v1alpha1
+kind: Task
+metadata:
+  name: read-task
+spec:
+  inputs:
+    params:
+      - name: filename
+    resources:
+      - name: workspace
+        type: git
+  steps:
+    - name: readme
+      image: ubuntu
+      command: ["cat"]
+      args:
+        [
+          "${inputs.params.filename}",
+        ]
+      workingDir: "/workspace/workspace"
+---
+apiVersion: pipestudio.github.com/v1alpha1
+kind: Pipeline
+metadata:
+  name: sequential-readme
+spec:
+  resources:
+    - name: source-boiler
+      type: git
+    - name: source-playgound
+      type: git
+  tasks:
+    - name: dockerfile-reader
+      taskRef:
+        name: read-task
+      inputs:
+        resources:
+          - name: workspace
+            resource: source-boiler
+        params:
+          - name: filename
+            value: Dockerfile
+    - name: readme-reader
+      taskRef:
+        name: read-task
+      inputs:
+        resources:
+          - name: workspace
+            resource: source-playgound
+        params:
+          - name: filename
+            value: README.md
+---
+apiVersion: pipestudio.github.com/v1alpha1
+kind: PipelineRun
+metadata:
+  name: read-repo-run
+spec:
+  pipelineRef:
+    name: sequential-readme
+  serviceAccount: default
+  resources:
+    - name: source-boiler
+      resourceRef:
+        name: go-example-boilerplate
+    - name: source-playgound
+      resourceRef:
+        name: go-example-playground
+    

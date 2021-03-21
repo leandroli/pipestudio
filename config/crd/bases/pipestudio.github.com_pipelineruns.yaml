@@ -51,7 +51,7 @@ spec:
                   - value
                   type: object
                 type: array
-              piplineRef:
+              pipelineRef:
                 description: PipelineRef defines the Pipeline to refer to
                 properties:
                   name:
@@ -90,7 +90,7 @@ spec:
               serviceAccount:
                 type: string
             required:
-            - piplineRef
+            - pipelineRef
             type: object
           status:
             description: PipelineRunStatus defines the observed state of PipelineRun

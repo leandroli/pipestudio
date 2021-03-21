@@ -3,5 +3,17 @@ kind: Pipeline
 metadata:
   name: pipeline-sample
 spec:
-  # Add fields here
-  foo: bar
+  resources:
+    - name: source-repo
+      type: git
+  tasks:
+    - name: readme
+      taskRef: 
+        name: read-task
+      inputs:
+        resources:
+          - name: workspace
+            resource: source-repo
+        params:
+          - name: filename
+            value: Dockerfile
