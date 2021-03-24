@@ -250,6 +250,22 @@ func newPodForTaskRun(tr *pipestudiov1alpha1.TaskRun, t *pipestudiov1alpha1.Task
 
 	}
 
+	// mount pvc on /pvc
+	if _, ok := tr.Labels["pipelinerun"]; ok {
+		volumes = append(volumes, corev1.Volume{
+			Name: "pvc",
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: tr.Labels["pipelinerun"],
+				},
+			},
+		})
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      "pvc",
+			MountPath: "/pvc",
+		})
+	}
+
 	containers := t.Spec.Steps
 
 	// 用来替换arg和workingDir
