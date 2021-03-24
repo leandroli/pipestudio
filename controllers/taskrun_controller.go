@@ -58,8 +58,6 @@ type TaskRunReconciler struct {
 func (r *TaskRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = r.Log.WithValues("taskrun", req.NamespacedName)
 
-	// TODO: 解决Params，加serviceAccount，这两个完成了基本就能完成build-push了
-
 	// retireve a TaskRun instance
 	instance := &pipestudiov1alpha1.TaskRun{}
 	err := r.Get(ctx, req.NamespacedName, instance)

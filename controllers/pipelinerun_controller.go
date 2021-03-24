@@ -24,12 +24,14 @@ import (
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	pipestudiov1alpha1 "github.com/leandroli/pipestudio/api/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -89,6 +91,45 @@ func (r *PipelineRunReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return ctrl.Result{}, err
 	}
 
+	// retrieve pvc to mount on the pods
+	pvc := &corev1.PersistentVolumeClaim{}
+	err = r.Get(ctx,
+		client.ObjectKey{
+			Name:      pipelineRun.Name,
+			Namespace: pipelineRun.Namespace,
+		},
+		pvc,
+	)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			newPvc := &corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      pipelineRun.Name,
+					Namespace: pipelineRun.Namespace,
+				},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceStorage: resource.MustParse("1G"),
+						},
+					},
+					AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+				},
+			}
+			if err := ctrl.SetControllerReference(pipelineRun, newPvc, r.Scheme); err != nil {
+				return ctrl.Result{}, err
+			}
+			if err := r.Create(ctx, newPvc); err != nil {
+				r.Log.Error(err, "Fail to create pvc", "PipelineRun.name", pipelineRun.Name)
+				requeueAfter, _ := time.ParseDuration("1m")
+				return ctrl.Result{Requeue: true, RequeueAfter: requeueAfter}, err
+			}
+			r.Log.Info("a pvc has been created", "pvc", newPvc.Name)
+			return ctrl.Result{}, nil
+		}
+		return ctrl.Result{}, err
+	}
+
 	// update pipelineRun status
 	// list the taskRun related to this pipelineRun. if there is no taskrun, create one
 	taskRunList := &pipestudiov1alpha1.TaskRunList{}
@@ -107,7 +148,7 @@ func (r *PipelineRunReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			pipelineRun.Status = pipestudiov1alpha1.PipelineRunStatus{
 				TaskRuns: nil,
 			}
-			if err := r.Update(ctx, pipelineRun); err != nil {
+			if err := r.Status().Update(ctx, pipelineRun); err != nil {
 				r.Log.Error(err, "Failed to update PipelineRun status")
 				return ctrl.Result{}, err
 			}
