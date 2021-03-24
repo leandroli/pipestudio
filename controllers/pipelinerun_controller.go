@@ -106,6 +106,9 @@ func (r *PipelineRunReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      pipelineRun.Name,
 					Namespace: pipelineRun.Namespace,
+					Labels: map[string]string{
+						"pipelinerun": pipelineRun.Name,
+					},
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					Resources: corev1.ResourceRequirements{
