@@ -177,8 +177,9 @@ func (r *PipelineRunReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	// execute tasks sequentially in the order of declaration in Pipeline
 	// check the status of taskrun and execute next one if it is exited whit 0
-	for i := 0; i < len(pipeline.Spec.Tasks); i++ {
-		pipelineTask := pipeline.Spec.Tasks[i]
+	pipelineTasks := pipeline.Spec.Tasks
+	for i := 0; i < len(pipelineTasks); i++ {
+		pipelineTask := pipelineTasks[i]
 		key := client.ObjectKey{
 			Namespace: pipelineRun.Namespace,
 			Name:      pipelineRun.Name + "-" + pipelineTask.Name,
@@ -190,6 +191,13 @@ func (r *PipelineRunReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 				if err != nil {
 					r.Log.Error(err, "Fail to generate TaskRun", "PipelineTask.name", pipelineTask.Name)
 					return ctrl.Result{}, nil
+				}
+				annotations := make(map[string]string)
+				if i != 0 {
+					annotations["frontTaskRun"] = pipelineRun.Name + "-" + pipelineTasks[i-1].Name
+				}
+				if i != len(pipelineTasks) - 1 {
+					annotations["nextTaskRun"] = pipelineRun.Name + "-" + pipelineTasks[i+1].Name
 				}
 				if err = ctrl.SetControllerReference(pipelineRun, newTaskRun, r.Scheme); err != nil {
 					return ctrl.Result{}, err
