@@ -47,7 +47,7 @@ type PipelineRunReconciler struct {
 // +kubebuilder:rbac:groups=pipestudio.github.com,resources=pipelineruns/finalizers,verbs=update
 // +kubebuilder:rbac:groups=pipestudio.github.com,resources=taskruns,verbs=get;list;watch;creat;update;patch;delete
 // +kubebuilder:rbac:groups=pipestudio.github.com,resources=taskruns/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=pipestudio.github.com,resources=tasks,verbs=get;list;watch;creat;update;patch;delete
+// +kubebuilder:rbac:groups=v1,resources=persistentvolumeclaims,verbs=get;list;watch;creat;update;patch;delete
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 // TODO(user): Modify the Reconcile function to compare the state specified by
@@ -266,5 +266,6 @@ func (r *PipelineRunReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&pipestudiov1alpha1.PipelineRun{}).
 		Owns(&pipestudiov1alpha1.TaskRun{}).
+		Owns(&corev1.PersistentVolumeClaim{}).
 		Complete(r)
 }
