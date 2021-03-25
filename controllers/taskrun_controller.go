@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
@@ -197,44 +198,78 @@ func replaceTaskParams(tr *pipestudiov1alpha1.TaskRun, t *pipestudiov1alpha1.Tas
 
 func newPodForTaskRun(tr *pipestudiov1alpha1.TaskRun, t *pipestudiov1alpha1.Task, im map[string]pipestudiov1alpha1.PipelineResource) (pod *corev1.Pod, err error) {
 
-	// add volumeMount into containers
+	// get map inputParams mapping reference to true param
 	err = nil
 	inputParams, err := replaceTaskParams(tr, t)
 	if err != nil {
 		return nil, err
 	}
 
+	// get resourceLocations from annotation of taskrun
+	var resourceLocations []ResourceLocation
+	if v, ok := tr.Annotations["pipelinestuido.github.com/resource-locations"]; ok {
+		if err := json.Unmarshal([]byte(v), &resourceLocations); err != nil {
+			return nil, err
+		}
+	}
+
+	// func getTaskRunToImportResource is used to get the taskrun's name
+	// which output the resource for this taskrun
+	getTaskRunToImportResource := func(resourceName string) (taskRunName string) {
+		for _, resourceLocation := range resourceLocations {
+			if resourceLocation.ResourceName == resourceName {
+				return resourceLocation.TaskRunName
+			}
+		}
+		return ""
+	}
+
+	// cmd of container copy-in
+	var inputcmd string
 	volumeMounts := []corev1.VolumeMount{}
 	volumes := []corev1.Volume{}
-	taskResourceMap := make(map[string]bool)
-	// 把task的Inputs中的TaskResource作为volume绑在要创建的pod上。
+	// taskResourceToTargetPath is a map to check if resource in outputs also declared in inputs 
+	taskResourceToTargetPath := make(map[string]string)
+	// get volumes and volumeMounts from task.spec.inputs.resource
 	if t.Spec.Inputs != nil {
 		for _, tres := range t.Spec.Inputs.Resources {
+			var volumeSource corev1.VolumeSource
+			// if there is a output resource to get from, copy it from pvc
+			if taskRunToImportFrom := getTaskRunToImportResource(tres.Name); taskRunToImportFrom != "" {
+				inputcmd += "cp -rT " + "/pvc/" + taskRunToImportFrom + "/" + tres.Name +
+					" " + getPathFromTR(tres, "input") + ";"
+				volumeSource = corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				}
+			} else {
+				volumeSource = corev1.VolumeSource{
+					GitRepo: &corev1.GitRepoVolumeSource{
+						Repository: getURLFromPR(im[tres.Name]),
+						Directory:  ".",
+					},
+				}
+			}
 			if tres.Type == pipestudiov1alpha1.PipelineResourceTypeGit {
 				volumes = append(volumes, corev1.Volume{
-					Name: tres.Name,
-					VolumeSource: corev1.VolumeSource{
-						GitRepo: &corev1.GitRepoVolumeSource{
-							Repository: getURLFromPR(im[tres.Name]),
-							Directory:  ".",
-						},
-					},
+					Name:         tres.Name,
+					VolumeSource: volumeSource,
 				})
 				volumeMounts = append(volumeMounts, corev1.VolumeMount{
 					Name:      tres.Name,
 					MountPath: getPathFromTR(tres, "input"),
 				})
 			}
-			taskResourceMap[tres.Name] = true
+			taskResourceToTargetPath[tres.Name] = getPathFromTR(tres, "input")
 		}
 	}
 
-	var cmd string
-	// 把task的Outputs中的TaskResource作为volume绑在要创建的pod上。
+	var outputcmd string
+	// get volumes and volumeMounts from task.spec.outputs.resource
 	if t.Spec.Outputs != nil {
 		for _, tres := range t.Spec.Outputs.Resources {
-			if taskResourceMap[tres.Name] {
-				cmd += "cp -r " + getPathFromTR(tres, "input") + " /pvc/" + t.Name + "/" + tres.Name + ";"
+			// if this resource alse declared in inputs
+			if path, ok := taskResourceToTargetPath[tres.Name]; ok {
+				outputcmd += "cp -r " + path + " /pvc/" + tr.Name + "/" + tres.Name + ";"
 				continue
 			}
 			volumes = append(volumes, corev1.Volume{
@@ -247,7 +282,7 @@ func newPodForTaskRun(tr *pipestudiov1alpha1.TaskRun, t *pipestudiov1alpha1.Task
 				Name:      tres.Name,
 				MountPath: getPathFromTR(tres, "output"),
 			})
-			cmd += "cp -r " + getPathFromTR(tres, "output") + "/pvc/" + t.Name + "/" + tres.Name + ";"
+			outputcmd += "cp -r " + getPathFromTR(tres, "output") + "/pvc/" + tr.Name + "/" + tres.Name + ";"
 		}
 
 	}
@@ -270,12 +305,12 @@ func newPodForTaskRun(tr *pipestudiov1alpha1.TaskRun, t *pipestudiov1alpha1.Task
 
 	containers := t.Spec.Steps
 
-	// 用来替换arg和workingDir
+	// func replace is used to replace params in args and workingDir 
 	replace := func(str string) (result string, err error) {
 		for {
 			if index := strings.Index(str, "${"); index != -1 {
 				rightBracketI := strings.Index(str, "}")
-				// 找不到}退出
+				// cannot find "}"
 				if rightBracketI == -1 {
 					break
 				}
@@ -293,7 +328,7 @@ func newPodForTaskRun(tr *pipestudiov1alpha1.TaskRun, t *pipestudiov1alpha1.Task
 		return
 	}
 
-	//检查替换args和workingDir
+	// add volumes and volumeMount to pod and each containers, and replace args and workingDir
 	for i := 0; i < len(containers); i++ {
 		containers[i].VolumeMounts = append(containers[i].VolumeMounts, volumeMounts...)
 		containers[i].WorkingDir, err = replace(containers[i].WorkingDir)
@@ -307,17 +342,29 @@ func newPodForTaskRun(tr *pipestudiov1alpha1.TaskRun, t *pipestudiov1alpha1.Task
 	if tr.Spec.ServiceAccount != "" {
 		serviceAccount = tr.Spec.ServiceAccount
 	}
-	//*********************workplace*************************
-	// 有output的话就copy过去，没有的话就把最后一个step作为contianer
-	// 有input就在前面加
-	if cmd != "" {
+
+	// add container to copy output to pvc if needed
+	if outputcmd != "" {
 		containers = append(containers, corev1.Container{
-			Name:         "pipestudio-copy",
+			Name:         "pipestudio-copy-out",
 			Image:        "bash",
 			Command:      []string{"bash"},
-			Args:         []string{"-c", "mkdir /pvc/" + t.Name + ";" + cmd},
+			Args:         []string{"-c", "mkdir /pvc/" + tr.Name + "; " + outputcmd},
 			VolumeMounts: volumeMounts,
 		})
+	}
+
+	//add container to copy input to /workspace from pvc if needed
+	if inputcmd != "" {
+		containers = append([]corev1.Container{
+			{
+				Name:         "pipestudio-copy-in",
+				Image:        "bash",
+				Command:      []string{"bash"},
+				Args:         []string{"-c", inputcmd},
+				VolumeMounts: volumeMounts,
+			},
+		}, containers...)
 	}
 
 	return &corev1.Pod{

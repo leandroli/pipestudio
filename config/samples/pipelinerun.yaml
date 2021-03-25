@@ -65,21 +65,22 @@ spec:
   - name: first-create-file          # 1. create file
     taskRef:
       name: create-file
-    resources:
-      inputs:
+    inputs:
+      resources:
       - name: workspace
         resource: source-repo
-      outputs:
+    outputs:
+      resources:
       - name: workspace
         resource: source-repo
   - name: then-check                 # 2.  check file exists
     taskRef:
       name: check-stuff-file-exists
-    resources:
-      inputs:
+    inputs:
+      resources:
       - name: workspace
         resource: source-repo
-        from: [first-create-file]
+        from: first-create-file
 ---
 apiVersion: pipestudio.github.com/v1alpha1
 kind: PipelineRun
@@ -88,8 +89,6 @@ metadata:
 spec:
   pipelineRef:
     name: output-pipeline
-  trigger:
-    type: manual
   serviceAccount: 'default'
   resources:
   - name: source-repo

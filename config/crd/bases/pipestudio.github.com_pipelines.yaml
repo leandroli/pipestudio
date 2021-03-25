@@ -90,9 +90,11 @@ spec:
                           type: array
                         resources:
                           items:
-                            description: PipelineTaskResources map the DeclaredPipelineResources
+                            description: PipelineTaskInputResources map the DeclaredPipelineResources
                               of Pipeline to the resources that required by tasks
                             properties:
+                              from:
+                                type: string
                               name:
                                 description: Name is the name of the PipelineResource
                                   as declared by the Task.
@@ -107,7 +109,6 @@ spec:
                             type: object
                           type: array
                       required:
-                      - params
                       - resources
                       type: object
                     name:
@@ -116,7 +117,7 @@ spec:
                       properties:
                         resources:
                           items:
-                            description: PipelineTaskResources map the DeclaredPipelineResources
+                            description: PipelineTaskOutputResources map the DeclaredPipelineResources
                               of Pipeline to the resources that required by tasks
                             properties:
                               name:

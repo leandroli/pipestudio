@@ -55,17 +55,27 @@ type PipelineTask struct {
 }
 
 type PipelineTaskInputs struct {
-	Resources []PipelineTaskResource `json:"resources"`
-	Params    []Param                `json:"params"`
+	Resources []PipelineTaskInputResource `json:"resources"`
+	Params    []Param                     `json:"params,omitempty"`
 }
 
 type PipelineTaskOutputs struct {
-	Resources []PipelineTaskResource `json:"resources"`
+	Resources []PipelineTaskOutputResource `json:"resources"`
 }
 
-// PipelineTaskResources map the DeclaredPipelineResources of Pipeline to the resources
+// PipelineTaskInputResources map the DeclaredPipelineResources of Pipeline to the resources
 // that required by tasks
-type PipelineTaskResource struct {
+type PipelineTaskInputResource struct {
+	// Name is the name of the PipelineResource as declared by the Task.
+	Name string `json:"name"`
+	// Resource is the name of the DeclaredPipelineResource to use.
+	Resource string `json:"resource"`
+	From     string `json:"from,omitempty"`
+}
+
+// PipelineTaskOutputResources map the DeclaredPipelineResources of Pipeline to the resources
+// that required by tasks
+type PipelineTaskOutputResource struct {
 	// Name is the name of the PipelineResource as declared by the Task.
 	Name string `json:"name"`
 	// Resource is the name of the DeclaredPipelineResource to use.

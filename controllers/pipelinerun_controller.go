@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"time"
@@ -40,6 +41,11 @@ type PipelineRunReconciler struct {
 	client.Client
 	Log    logr.Logger
 	Scheme *runtime.Scheme
+}
+
+type ResourceLocation struct {
+	TaskRunName  string `json:"taskrunName"`
+	ResourceName string `json:"resourceName"`
 }
 
 // +kubebuilder:rbac:groups=pipestudio.github.com,resources=pipelineruns,verbs=get;list;watch;create;update;patch;delete
@@ -192,13 +198,6 @@ func (r *PipelineRunReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 					r.Log.Error(err, "Fail to generate TaskRun", "PipelineTask.name", pipelineTask.Name)
 					return ctrl.Result{}, nil
 				}
-				annotations := make(map[string]string)
-				if i != 0 {
-					annotations["frontTaskRun"] = pipelineRun.Name + "-" + pipelineTasks[i-1].Name
-				}
-				if i != len(pipelineTasks)-1 {
-					annotations["nextTaskRun"] = pipelineRun.Name + "-" + pipelineTasks[i+1].Name
-				}
 				if err = ctrl.SetControllerReference(pipelineRun, newTaskRun, r.Scheme); err != nil {
 					return ctrl.Result{}, err
 				}
@@ -242,7 +241,14 @@ func newTaskRunforPipelineTask(
 	}
 
 	taskRunInputs := &pipestudiov1alpha1.TaskRunInputs{}
+	resourceLocations := []ResourceLocation{}
 	for _, resource := range pt.Inputs.Resources {
+		if resource.From != "" {
+			resourceLocations = append(resourceLocations, ResourceLocation{
+				TaskRunName:  pr.Name + "-" + resource.From,
+				ResourceName: resource.Name,
+			})
+		}
 		resourceRef, err := findResourceRef(resource.Resource)
 		if err != nil {
 			return nil, err
@@ -252,11 +258,21 @@ func newTaskRunforPipelineTask(
 			ResourceRef: resourceRef,
 		})
 	}
+
+	rLAnnotation, err := json.Marshal(resourceLocations)
+	if err != nil {
+		return nil, err
+	}
+	annotations := map[string]string{
+		"pipelinestuido.github.com/resource-locations": string(rLAnnotation),
+	}
+
 	taskRunInputs.Params = pt.Inputs.Params
 	return &pipestudiov1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      pr.Name + "-" + pt.Name,
-			Namespace: pr.Namespace,
+			Name:        pr.Name + "-" + pt.Name,
+			Namespace:   pr.Namespace,
+			Annotations: annotations,
 			Labels: map[string]string{
 				"pipelinerun": pr.Name,
 			},
