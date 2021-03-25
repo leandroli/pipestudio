@@ -196,7 +196,7 @@ func (r *PipelineRunReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 				if i != 0 {
 					annotations["frontTaskRun"] = pipelineRun.Name + "-" + pipelineTasks[i-1].Name
 				}
-				if i != len(pipelineTasks) - 1 {
+				if i != len(pipelineTasks)-1 {
 					annotations["nextTaskRun"] = pipelineRun.Name + "-" + pipelineTasks[i+1].Name
 				}
 				if err = ctrl.SetControllerReference(pipelineRun, newTaskRun, r.Scheme); err != nil {

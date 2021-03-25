@@ -209,43 +209,45 @@ func newPodForTaskRun(tr *pipestudiov1alpha1.TaskRun, t *pipestudiov1alpha1.Task
 	taskResourceMap := make(map[string]bool)
 	// 把task的Inputs中的TaskResource作为volume绑在要创建的pod上。
 	if t.Spec.Inputs != nil {
-		for _, tr := range t.Spec.Inputs.Resources {
-			if tr.Type == pipestudiov1alpha1.PipelineResourceTypeGit {
+		for _, tres := range t.Spec.Inputs.Resources {
+			if tres.Type == pipestudiov1alpha1.PipelineResourceTypeGit {
 				volumes = append(volumes, corev1.Volume{
-					Name: tr.Name,
+					Name: tres.Name,
 					VolumeSource: corev1.VolumeSource{
 						GitRepo: &corev1.GitRepoVolumeSource{
-							Repository: getURLFromPR(im[tr.Name]),
+							Repository: getURLFromPR(im[tres.Name]),
 							Directory:  ".",
 						},
 					},
 				})
 				volumeMounts = append(volumeMounts, corev1.VolumeMount{
-					Name:      tr.Name,
-					MountPath: getPathFromTR(tr, "input"),
+					Name:      tres.Name,
+					MountPath: getPathFromTR(tres, "input"),
 				})
 			}
-			taskResourceMap[tr.Name] = true
+			taskResourceMap[tres.Name] = true
 		}
 	}
 
+	var cmd string
 	// 把task的Outputs中的TaskResource作为volume绑在要创建的pod上。
 	if t.Spec.Outputs != nil {
-		for _, tr := range t.Spec.Outputs.Resources {
-			if taskResourceMap[tr.Name] {
+		for _, tres := range t.Spec.Outputs.Resources {
+			if taskResourceMap[tres.Name] {
+				cmd += "cp -r " + getPathFromTR(tres, "input") + " /pvc/" + t.Name + "/" + tres.Name + ";"
 				continue
 			}
-			// TODO(改成pvc，这样才能在Task之间传递)
 			volumes = append(volumes, corev1.Volume{
-				Name: tr.Name,
+				Name: tres.Name,
 				VolumeSource: corev1.VolumeSource{
 					EmptyDir: &corev1.EmptyDirVolumeSource{},
 				},
 			})
 			volumeMounts = append(volumeMounts, corev1.VolumeMount{
-				Name:      tr.Name,
-				MountPath: getPathFromTR(tr, "output"),
+				Name:      tres.Name,
+				MountPath: getPathFromTR(tres, "output"),
 			})
+			cmd += "cp -r " + getPathFromTR(tres, "output") + "/pvc/" + t.Name + "/" + tres.Name + ";"
 		}
 
 	}
@@ -300,16 +302,30 @@ func newPodForTaskRun(tr *pipestudiov1alpha1.TaskRun, t *pipestudiov1alpha1.Task
 		}
 	}
 
+	// use specific serviceAccount if provided, "default" for default
 	serviceAccount := "default"
 	if tr.Spec.ServiceAccount != "" {
 		serviceAccount = tr.Spec.ServiceAccount
+	}
+	//*********************workplace*************************
+	// 有output的话就copy过去，没有的话就把最后一个step作为contianer
+	// 有input就在前面加
+	if cmd != "" {
+		containers = append(containers, corev1.Container{
+			Name:         "pipestudio-copy",
+			Image:        "bash",
+			Command:      []string{"bash"},
+			Args:         []string{"-c", "mkdir /pvc/" + t.Name + ";" + cmd},
+			VolumeMounts: volumeMounts,
+		})
 	}
 
 	return &corev1.Pod{
 		ObjectMeta: tr.GetBuildPodMeta(),
 		Spec: corev1.PodSpec{
 			ServiceAccountName: serviceAccount,
-			Containers:         containers,
+			InitContainers:     containers[:len(containers)-1],
+			Containers:         containers[len(containers)-1:],
 			Volumes:            append(t.Spec.Volumes, volumes...),
 			RestartPolicy:      "OnFailure",
 		},

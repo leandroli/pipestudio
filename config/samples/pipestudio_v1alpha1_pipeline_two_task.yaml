@@ -29,6 +29,10 @@ spec:
     resources:
       - name: workspace
         type: git
+  outputs:
+    resources:
+      - name: workspace
+        type: git
   steps:
     - name: readme
       image: ubuntu
