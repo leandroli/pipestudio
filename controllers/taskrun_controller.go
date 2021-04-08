@@ -228,7 +228,7 @@ func newPodForTaskRun(tr *pipestudiov1alpha1.TaskRun, t *pipestudiov1alpha1.Task
 	var inputcmd string
 	volumeMounts := []corev1.VolumeMount{}
 	volumes := []corev1.Volume{}
-	// taskResourceToTargetPath is a map to check if resource in outputs also declared in inputs 
+	// taskResourceToTargetPath is a map to check if resource in outputs also declared in inputs
 	taskResourceToTargetPath := make(map[string]string)
 	// get volumes and volumeMounts from task.spec.inputs.resource
 	if t.Spec.Inputs != nil {
@@ -305,7 +305,7 @@ func newPodForTaskRun(tr *pipestudiov1alpha1.TaskRun, t *pipestudiov1alpha1.Task
 
 	containers := t.Spec.Steps
 
-	// func replace is used to replace params in args and workingDir 
+	// func replace is used to replace params in args and workingDir
 	replace := func(str string) (result string, err error) {
 		for {
 			if index := strings.Index(str, "${"); index != -1 {

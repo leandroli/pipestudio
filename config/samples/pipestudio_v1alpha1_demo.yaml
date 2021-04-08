@@ -1,0 +1,49 @@
+apiVersion: pipestudio.github.com/v1alpha1
+kind: PipelineResource
+metadata:
+  name: go-example-git
+spec:
+  type: git
+  params:
+    - name: url
+      value: https://github.com/l-lin/go-boilerplate
+---
+apiVersion: pipestudio.github.com/v1alpha1
+kind: Task
+metadata:
+  name: read-task
+spec:
+  inputs:
+    params:
+      - name: filename
+    resources:
+      - name: workspace
+        type: git
+  steps:
+    - name: readme
+      image: ubuntu
+      command: ["cat"]
+      args:
+        [
+          "${inputs.params.filename}",
+        ]
+      workingDir: "/workspace/workspace"
+---
+apiVersion: pipestudio.github.com/v1alpha1
+kind: TaskRun
+metadata:
+  name: read-repo-run
+spec:
+  taskRef:
+    name: read-task
+  trigger:
+    type: manual
+  serviceAccount: foo
+  inputs:
+    resources:
+      - name: workspace
+        resourceRef:
+          name: go-example-git
+    params:
+      - name: filename
+        value: Dockerfile
