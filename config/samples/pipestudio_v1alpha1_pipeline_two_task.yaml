@@ -53,6 +53,9 @@ spec:
       type: git
     - name: source-playgound
       type: git
+  params:
+    - name: filename1
+      description: "filename to read for first task"
   tasks:
     - name: dockerfile-reader
       taskRef:
@@ -63,7 +66,7 @@ spec:
             resource: source-boiler
         params:
           - name: filename
-            value: Dockerfile
+            value: filename1
     - name: readme-reader
       taskRef:
         name: read-task
@@ -90,4 +93,7 @@ spec:
     - name: source-playgound
       resourceRef:
         name: go-example-playground
+  params:
+    - name: filename1
+      value: Dockerfile
     

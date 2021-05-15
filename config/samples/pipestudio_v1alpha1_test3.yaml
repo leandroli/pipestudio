@@ -1,0 +1,84 @@
+apiVersion: pipestudio.github.com/v1alpha1
+kind: PipelineResource
+metadata:
+  name: go-example-git
+spec:
+  type: git
+  params:
+    - name: url
+      value: https://github.com/l-lin/go-boilerplate
+---
+apiVersion: pipestudio.github.com/v1alpha1
+kind: Task
+metadata:
+  name: build-push
+spec:
+  inputs:
+    params:
+      - name: filename
+      - name: registry
+        default: docker.io
+      - name: user
+      - name: image-name
+      - name: pass
+    resources:
+      - name: go-boilerplate
+        type: git
+  steps:
+    - name: build
+      image: quay.io/buildah/stable
+      command: ["buildah"]
+      args:
+        [
+          "bud", "--tls-verify=false", "--layers", "-f", "${inputs.params.filename}", "-t",
+          "${inputs.params.registry}/${inputs.params.user}/${inputs.params.image-name}", "."
+        ]
+      workingDir: "/workspace"
+      securityContext:
+        privileged: true
+      volumeMounts:
+        - name: varlibcontainers
+          mountPath: /var/lib/containers
+    - name: push
+      image: quay.io/buildah/stable
+      command: ["buildah"]
+      args:
+        [
+          "push", "--creds=${inputs.params.user}:${inputs.params.pass}", "--tls-verify=false",
+          "${inputs.params.registry}/${inputs.params.user}/${inputs.params.image-name}",
+          "docker://${inputs.params.registry}/${inputs.params.user}/${inputs.params.image-name}"
+        ]
+      workingDir: "/workspace"
+      securityContext:
+        privileged: true
+      volumeMounts:
+        - name: varlibcontainers
+          mountPath: /var/lib/containers
+  volumes:
+    - name: varlibcontainers
+      emptyDir: {}
+---
+apiVersion: pipestudio.github.com/v1alpha1
+kind: TaskRun
+metadata:
+  name: build-push-run
+spec:
+  taskRef:
+    name: build-push
+  trigger:
+    type: manual
+  inputs:
+    resources:
+      - name: go-boilerplate
+        resourceRef:
+          name: go-example-git
+    params:
+      - name: filename
+        value: go-boilerplate/Dockerfile
+      - name: user
+        value: leandro21
+      - name: image-name
+        value: test3
+      - name: pass
+        value: 6f9251ba-03dc-4216-ae52-2475d5da870a
+

@@ -1,0 +1,47 @@
+apiVersion: pipestudio.github.com/v1alpha1
+kind: PipelineResource
+metadata:
+  name: example-git
+spec:
+  type: git
+  params:
+    - name: url
+      value: https://github.com/cncf/curriculum
+---
+apiVersion: pipestudio.github.com/v1alpha1
+kind: Task
+metadata:
+  name: read-task
+spec:
+  inputs:
+    params:
+      - name: filename
+    resources:
+      - name: workspace
+        type: git
+  steps:
+    - name: readme
+      image: ubuntu
+      command: ["cat"]
+      args:
+        [
+          "${inputs.params.filename}",
+        ]
+      workingDir: "/workspace/workspace"
+---
+apiVersion: pipestudio.github.com/v1alpha1
+kind: TaskRun
+metadata:
+  name: read-repo-run
+spec:
+  taskRef:
+    name: read-task
+  inputs:
+    resources:
+      - name: workspace
+        resourceRef:
+          name:   example-git
+    params:
+      - name: filename
+        value: README.md
+

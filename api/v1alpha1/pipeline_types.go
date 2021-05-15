@@ -33,7 +33,7 @@ type PipelineStatus struct {
 // PipelineParam defines the parameter needed by Pipeline
 type PipelineParam struct {
 	Name        string `json:"name"`
-	Description string `json:"description"`
+	Description string `json:"description,omitempty"`
 	Default     string `json:"default,omitempty"`
 }
 
@@ -55,12 +55,12 @@ type PipelineTask struct {
 }
 
 type PipelineTaskInputs struct {
-	Resources []PipelineTaskInputResource `json:"resources"`
+	Resources []PipelineTaskInputResource `json:"resources,omitempty"`
 	Params    []Param                     `json:"params,omitempty"`
 }
 
 type PipelineTaskOutputs struct {
-	Resources []PipelineTaskOutputResource `json:"resources"`
+	Resources []PipelineTaskOutputResource `json:"resources,omitempty"`
 }
 
 // PipelineTaskInputResources map the DeclaredPipelineResources of Pipeline to the resources
@@ -70,7 +70,8 @@ type PipelineTaskInputResource struct {
 	Name string `json:"name"`
 	// Resource is the name of the DeclaredPipelineResource to use.
 	Resource string `json:"resource"`
-	From     string `json:"from,omitempty"`
+	// From indicates which task this resource has been processed by
+	From string `json:"from,omitempty"`
 }
 
 // PipelineTaskOutputResources map the DeclaredPipelineResources of Pipeline to the resources

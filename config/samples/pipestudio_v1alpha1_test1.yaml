@@ -1,0 +1,69 @@
+apiVersion: pipestudio.github.com/v1alpha1
+kind: Task
+metadata:
+  name: test-tk
+spec:
+  inputs:
+    params:
+      - name: test-param
+        description: "param for test"
+        default: ""
+  steps:
+    - name: test
+      image: busybox
+      command: ["ls"]
+      args:
+        ["-ahl"]
+      workingDir: "/"
+---
+apiVersion: pipestudio.github.com/v1alpha1
+kind: TaskRun
+metadata:
+  name: test-tr
+spec:
+  taskRef: 
+    name: test-tk
+  inputs:
+    params:
+      - name: test-param
+        value: ""
+---
+apiVersion: pipestudio.github.com/v1alpha1
+kind: PipelineResource
+metadata:
+  name: test-pr
+spec:
+  type: git
+  params:
+    - name: url
+      value: https://github.com/leandroli/pipestudio
+---
+apiVersion: pipestudio.github.com/v1alpha1
+kind: Pipeline
+metadata:
+  name: test-ppl
+spec:
+  params:
+    - name: test-ppl-param
+      description: "param of pipeline for test"
+      default: ""
+  tasks:
+    - name: test-ppl-tk
+      taskRef:
+        name: test-tk
+      inputs:
+        params:
+          - name: test-param
+            value: test-ppl-param
+---
+apiVersion: pipestudio.github.com/v1alpha1
+kind: PipelineRun
+metadata:
+  name: test-pr
+spec:
+  pipelineRef: 
+    name: test-ppl
+  params:
+    - name: test-ppl-param
+      value: "test"
+

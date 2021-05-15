@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -78,8 +79,7 @@ func (r *TaskRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	task := &pipestudiov1alpha1.Task{}
 	if err = r.Get(ctx, client.ObjectKey{Namespace: taskRun.Namespace, Name: taskRun.Spec.TaskRef.Name}, task); err != nil {
 		if errors.IsNotFound(err) {
-			// TODO(处理有TaskRun但没有Task的情况, deal with the scenario that Task to which TaskRun refers dose not exist)
-			return ctrl.Result{}, nil
+			return ctrl.Result{RequeueAfter: 30 * time.Second, Requeue: true}, nil
 		}
 		return ctrl.Result{}, err
 	}
@@ -90,8 +90,7 @@ func (r *TaskRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		pr := &pipestudiov1alpha1.PipelineResource{}
 		if err = r.Get(ctx, client.ObjectKey{Namespace: taskRun.Namespace, Name: resourceBinding.ResourceRef.Name}, pr); err != nil {
 			if errors.IsNotFound(err) {
-				// TODO(处理TaskRun指向的资源不存在的情况)
-				return ctrl.Result{}, nil
+				return ctrl.Result{RequeueAfter: 30 * time.Second, Requeue: true}, nil
 			}
 			return ctrl.Result{}, err
 		}

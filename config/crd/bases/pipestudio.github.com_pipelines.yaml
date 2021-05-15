@@ -46,7 +46,6 @@ spec:
                     name:
                       type: string
                   required:
-                  - description
                   - name
                   type: object
                 type: array
@@ -94,6 +93,8 @@ spec:
                               of Pipeline to the resources that required by tasks
                             properties:
                               from:
+                                description: From indicates which task this resource
+                                  has been processed by
                                 type: string
                               name:
                                 description: Name is the name of the PipelineResource
@@ -108,8 +109,6 @@ spec:
                             - resource
                             type: object
                           type: array
-                      required:
-                      - resources
                       type: object
                     name:
                       type: string
@@ -133,8 +132,6 @@ spec:
                             - resource
                             type: object
                           type: array
-                      required:
-                      - resources
                       type: object
                     taskRef:
                       description: TaskRef can be used to refer to a specific instance

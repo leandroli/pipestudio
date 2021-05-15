@@ -92,7 +92,7 @@ func (r *PipelineRunReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			return ctrl.Result{}, nil
+			return ctrl.Result{RequeueAfter: 30 * time.Second, Requeue: true}, nil
 		}
 		return ctrl.Result{}, err
 	}
@@ -140,7 +140,7 @@ func (r *PipelineRunReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	// update pipelineRun status
-	// list the taskRun related to this pipelineRun. if there is no taskrun, create one
+	// list the taskRun related to this pipelineRun.
 	taskRunList := &pipestudiov1alpha1.TaskRunList{}
 	lbs := map[string]string{
 		"pipelinerun": pipelineRun.Name,
@@ -193,7 +193,7 @@ func (r *PipelineRunReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		taskRun := &pipestudiov1alpha1.TaskRun{}
 		if err := r.Get(ctx, key, taskRun); err != nil {
 			if errors.IsNotFound(err) {
-				newTaskRun, err := newTaskRunforPipelineTask(&pipelineTask, pipelineRun)
+				newTaskRun, err := newTaskRunforPipelineTask(&pipelineTask, pipelineRun, pipeline.Spec.Params)
 				if err != nil {
 					r.Log.Error(err, "Fail to generate TaskRun", "PipelineTask.name", pipelineTask.Name)
 					return ctrl.Result{}, nil
@@ -228,6 +228,7 @@ func (r *PipelineRunReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 func newTaskRunforPipelineTask(
 	pt *pipestudiov1alpha1.PipelineTask,
 	pr *pipestudiov1alpha1.PipelineRun,
+	pplParams []pipestudiov1alpha1.PipelineParam,
 ) (taskrun *pipestudiov1alpha1.TaskRun, err error) {
 
 	findResourceRef := func(name string) (pipestudiov1alpha1.PipelineResourceRef, error) {
@@ -267,7 +268,30 @@ func newTaskRunforPipelineTask(
 		"pipelinestuido.github.com/resource-locations": string(rLAnnotation),
 	}
 
+	// replace params
+	pplParamsMap := make(map[string]string)
+	for _, prParam := range pr.Spec.Params {
+		pplParamsMap[prParam.Name] = prParam.Value
+	}
+	for _, param := range pplParams {
+		if _, ok := pplParamsMap[param.Name]; ok {
+			continue
+		}
+		if param.Default == "" {
+			err = fmt.Errorf("pipeline param is not defined")
+			break
+		} else {
+			pplParamsMap[param.Name] = param.Default
+		}
+	}
+	for i := range pt.Inputs.Params {
+		param := pt.Inputs.Params[i]
+		if v, ok := pplParamsMap[param.Value]; ok {
+			pt.Inputs.Params[i].Value = v
+		}
+	}
 	taskRunInputs.Params = pt.Inputs.Params
+
 	return &pipestudiov1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        pr.Name + "-" + pt.Name,

@@ -1,0 +1,159 @@
+apiVersion: pipestudio.github.com/v1alpha1
+kind: PipelineResource
+metadata:
+  name: go-example-git
+spec:
+  type: git
+  params:
+    - name: url
+      value: https://github.com/l-lin/go-boilerplate
+---
+apiVersion: pipestudio.github.com/v1alpha1
+kind: Task
+metadata:
+  name: build-push
+spec:
+  inputs:
+    params:
+      - name: filename
+      - name: registry
+        default: docker.io
+      - name: user
+      - name: image-name
+      - name: pass
+    resources:
+      - name: go-boilerplate
+        type: git
+  steps:
+    - name: build
+      image: quay.io/buildah/stable
+      command: ["buildah"]
+      args:
+        [
+          "bud",
+          "--tls-verify=false",
+          "--layers",
+          "-f",
+          "${inputs.params.filename}",
+          "-t",
+          "${inputs.params.registry}/${inputs.params.user}/${inputs.params.image-name}",
+          ".",
+        ]
+      workingDir: "/workspace"
+      securityContext:
+        privileged: true
+      volumeMounts:
+        - name: varlibcontainers
+          mountPath: /var/lib/containers
+    - name: push
+      image: quay.io/buildah/stable
+      command: ["buildah"]
+      args:
+        [
+          "push",
+          "--creds=${inputs.params.user}:${inputs.params.pass}",
+          "--tls-verify=false",
+          "${inputs.params.registry}/${inputs.params.user}/${inputs.params.image-name}",
+          "docker://${inputs.params.registry}/${inputs.params.user}/${inputs.params.image-name}",
+        ]
+      workingDir: "/workspace"
+      securityContext:
+        privileged: true
+      volumeMounts:
+        - name: varlibcontainers
+          mountPath: /var/lib/containers
+  volumes:
+    - name: varlibcontainers
+      emptyDir: {}
+---
+apiVersion: pipestudio.github.com/v1alpha1
+kind: Task
+metadata:
+  name: deploy-using-kubectl
+spec:
+  inputs:
+    params:
+      - name: image-name
+      - name: user
+      - name: app-name
+  steps:
+    - name: run-kubectl
+      image: lachlanevenson/k8s-kubectl
+      command: ["kubectl"]
+      args:
+        [
+          "create",
+          "deployment",
+          "${inputs.params.app-name}",
+          "--image=${inputs.params.user}/${inputs.params.image-name}"
+        ]
+---
+apiVersion: pipestudio.github.com/v1alpha1
+kind: Pipeline
+metadata:
+  name: build-and-deploy
+spec:
+  resources:
+    - name: source-repo
+      type: git
+  params:
+    - name: build-filename
+      default: Dockerfile
+    - name: user-name
+    - name: image-name
+    - name: token
+    - name: app-name
+  tasks:
+    - name: build
+      taskRef:
+        name: build-push
+      inputs:
+        resources:
+          - name: go-boilerplate
+            resource: source-repo
+        params:
+          - name: filename
+            value: build-filename
+          - name: registry
+            value: docker.io
+          - name: user
+            value: user-name
+          - name: image-name
+            value: image-name
+          - name: pass
+            value: token
+    - name: deploy
+      taskRef:
+        name: deploy-using-kubectl
+      inputs:
+        params:
+          - name: image-name
+            value: image-name
+          - name: user
+            value: user-name
+          - name: app-name
+            value: app-name
+---
+apiVersion: pipestudio.github.com/v1alpha1
+kind: PipelineRun
+metadata:
+  name: build-and-deploy-run
+spec:
+  pipelineRef:
+    name: build-and-deploy
+  resources:
+    - name: source-repo
+      resourceRef:
+        name: go-example-git
+  params:
+      - name: build-filename
+        value: go-boilerplate/Dockerfile
+      - name: user-name
+        value: leandro21
+      - name: image-name
+        value: test4
+      - name: token
+        value: 6f9251ba-03dc-4216-ae52-2475d5da870a
+      - name: app-name
+        value: test4
+  
