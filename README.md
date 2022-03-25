@@ -1,4 +1,4 @@
 # pipestudio
-A Kubernetes Native CICD Management System
+A Kubernetes Native CICD pipeline Management System
 
 developed using [operator framework](https://operatorframework.io/)
